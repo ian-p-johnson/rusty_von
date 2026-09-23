@@ -38,7 +38,8 @@ pub fn unknown_model_message(name: &str) -> String {
 #[error("{0}")]
 pub struct EngineError(pub String);
 
-pub trait Engine {
+/// Send + Sync so a shared `Arc<dyn Engine>` can back the HTTP server.
+pub trait Engine: Send + Sync {
     fn evaluate(
         &self,
         state: &Value,
@@ -117,7 +118,7 @@ impl QuestionBackend for StubEngine {
     }
 }
 
-impl<T: QuestionBackend> Engine for T {
+impl<T: QuestionBackend + Send + Sync> Engine for T {
     fn evaluate(
         &self,
         state: &Value,

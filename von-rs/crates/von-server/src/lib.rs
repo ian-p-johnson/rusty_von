@@ -1,13 +1,15 @@
-//! FastAPI-compatible von decision server (Stage 1: stub engine).
+//! FastAPI-compatible von decision server (Stage 2: real engine via
+//! `build_engine_router`, stub retained for wire-gate tests).
 
 pub mod pyjson_scan;
 pub mod validate;
 
 use std::env;
+use std::sync::Arc;
 
 use axum::Router;
 use axum::body::Body;
-use axum::extract::Request;
+use axum::extract::{Request, State};
 use axum::http::{HeaderMap, HeaderValue, Method, StatusCode, header};
 use axum::response::Response;
 use axum::routing::MethodRouter;
@@ -32,13 +34,21 @@ impl CorsConfig {
     }
 }
 
+/// Stub-engine router (Stage 1 wire-gate fixture; not for deployment).
 pub fn build_router() -> Router {
+    build_engine_router(Arc::new(StubEngine))
+}
+
+/// Router backed by any engine — the Stage 2 wiring point for the ONNX
+/// backend.
+pub fn build_engine_router(engine: Arc<dyn Engine>) -> Router {
     let router = Router::new()
         .route("/", health_route())
         .route("/health", health_route())
         .route("/v1/models", models_route())
         .route("/v1/systemone", system_one_route())
-        .fallback(not_found);
+        .fallback(not_found)
+        .with_state(engine);
     router.layer(axum::middleware::from_fn(cors_middleware))
 }
 
@@ -82,7 +92,10 @@ async fn health_handler(method: axum::http::Method) -> Response {
     detail_response(StatusCode::OK, health_body())
 }
 
-fn health_route() -> MethodRouter {
+fn health_route<S>() -> MethodRouter<S>
+where
+    S: Clone + Send + Sync + 'static,
+{
     MethodRouter::new()
         .get(health_handler)
         .fallback(|method: axum::http::Method| async move { method_not_allowed("GET", &method) })
@@ -108,7 +121,10 @@ async fn models_handler(method: axum::http::Method) -> Response {
     detail_response(StatusCode::OK, body.to_string())
 }
 
-fn models_route() -> MethodRouter {
+fn models_route<S>() -> MethodRouter<S>
+where
+    S: Clone + Send + Sync + 'static,
+{
     MethodRouter::new()
         .get(models_handler)
         .fallback(|method: axum::http::Method| async move { method_not_allowed("GET", &method) })
@@ -145,7 +161,7 @@ fn check_auth(headers: &HeaderMap) -> Option<Response> {
     None
 }
 
-async fn system_one_handler(request: Request) -> Response {
+async fn system_one_handler(State(engine): State<Arc<dyn Engine>>, request: Request) -> Response {
     let auth_failure = check_auth(request.headers());
     if let Some(resp) = auth_failure {
         return resp;
@@ -167,7 +183,6 @@ async fn system_one_handler(request: Request) -> Response {
             detail_response(StatusCode::UNPROCESSABLE_ENTITY, detail)
         }
         validate::ParsedRequest::Ok(req) => {
-            let engine = StubEngine;
             match engine.evaluate(
                 &req.state,
                 &req.questions,
@@ -183,7 +198,7 @@ async fn system_one_handler(request: Request) -> Response {
     }
 }
 
-fn system_one_route() -> MethodRouter {
+fn system_one_route() -> MethodRouter<Arc<dyn Engine>> {
     MethodRouter::new()
         .post(system_one_handler)
         .fallback(|method: axum::http::Method| async move { method_not_allowed("POST", &method) })

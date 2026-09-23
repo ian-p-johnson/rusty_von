@@ -152,7 +152,7 @@ fn run_system_one(
     if let Some(url) = base_url {
         return remote_system_one(&url, &payload);
     }
-    let engine = StubEngine;
+    let engine = build_engine();
     let questions_map: indexmap::IndexMap<String, serde_json::Value> = payload["questions"]
         .as_object()
         .expect("questions object")
@@ -190,7 +190,7 @@ fn main() {
                 .build()
                 .expect("tokio runtime");
             runtime.block_on(async move {
-                let router = von_server::build_router();
+                let router = von_server::build_engine_router(build_engine());
                 let listener = tokio::net::TcpListener::bind((host.as_str(), port))
                     .await
                     .unwrap_or_else(|e| {
@@ -368,4 +368,43 @@ fn main() {
             println!("{}", to_python_json_indent(&resp, 2));
         }
     }
+}
+
+/// Engine resolution for CLI commands and `serve`: the real ONNX backend
+/// when the exported artifact is present (`VON_ONNX` or the repo-relative
+/// default), else the Stage 1 stub so the CLI stays usable without weights.
+fn build_engine() -> std::sync::Arc<dyn Engine> {
+    let candidates: Vec<PathBuf> = match std::env::var("VON_ONNX") {
+        Ok(p) if !p.is_empty() => vec![PathBuf::from(p)],
+        _ => vec![
+            PathBuf::from("von-rs/artifacts/von-option-marker.onnx"),
+            PathBuf::from("artifacts/von-option-marker.onnx"),
+        ],
+    };
+    for path in candidates {
+        if path.is_file() {
+            match von_backend_ort::OrtEngine::from_artifacts(
+                &path,
+                &von_backend_ort::snapshot_dir().expect("HF snapshot resolution"),
+            ) {
+                Ok(engine) => {
+                    eprintln!(
+                        "[von] engine: ONNX backend ({})",
+                        path.canonicalize()
+                            .unwrap_or_else(|_| path.clone())
+                            .display()
+                    );
+                    return std::sync::Arc::new(engine);
+                }
+                Err(e) => {
+                    eprintln!(
+                        "[von] warning: ONNX backend failed to load ({e}); using stub engine"
+                    );
+                    return std::sync::Arc::new(StubEngine);
+                }
+            }
+        }
+    }
+    eprintln!("[von] warning: no ONNX artifact found (set VON_ONNX); using stub engine");
+    std::sync::Arc::new(StubEngine)
 }

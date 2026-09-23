@@ -2233,6 +2233,7 @@ dependencies = [
  "reqwest",
  "serde_json",
  "tokio",
+ "von-backend-ort",
  "von-core",
  "von-server",
 ]

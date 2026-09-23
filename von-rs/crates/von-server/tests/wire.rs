@@ -13,6 +13,12 @@ fn guard() -> std::sync::MutexGuard<'static, ()> {
     TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner())
 }
 
+/// Local-app tests must not inherit an ambient VON_API_KEY from a sibling
+/// auth test (mirrors the test_server.py fix from Stage 0).
+fn clear_api_key() {
+    unsafe { std::env::remove_var("VON_API_KEY") };
+}
+
 fn fixtures_dir() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures")
 }
@@ -74,6 +80,7 @@ async fn send(
 #[tokio::test]
 async fn wire_gate_replays_all_captured_cases() {
     let _guard = guard();
+    clear_api_key();
     let cases = load_wire();
     assert!(cases.len() >= 30);
     for case in cases {
@@ -122,6 +129,7 @@ async fn wire_gate_replays_all_captured_cases() {
 #[tokio::test]
 async fn stub_engine_positive_path_envelope() {
     let _guard = guard();
+    clear_api_key();
     let (status, body, _) = send(
         "POST",
         "/v1/systemone",
@@ -162,6 +170,7 @@ async fn stub_engine_positive_path_envelope() {
 #[tokio::test]
 async fn stub_engine_fanout_usage_matches_formula() {
     let _guard = guard();
+    clear_api_key();
     let (status, body, _) = send(
         "POST",
         "/v1/systemone",
@@ -183,6 +192,7 @@ async fn stub_engine_fanout_usage_matches_formula() {
 #[tokio::test]
 async fn engine_level_422s_match_golden_messages() {
     let _guard = guard();
+    clear_api_key();
     let (status, body, _) = send(
         "POST",
         "/v1/systemone",
@@ -270,6 +280,7 @@ async fn auth_gate_matches_python_when_key_set() {
 #[tokio::test]
 async fn no_auth_required_without_env_key() {
     let _guard = guard();
+    clear_api_key();
     unsafe { std::env::remove_var("VON_API_KEY") };
     let (status, _, _) = send(
         "POST",
@@ -285,6 +296,7 @@ async fn no_auth_required_without_env_key() {
 #[tokio::test]
 async fn cors_preflight_matches_starlette() {
     let _guard = guard();
+    clear_api_key();
     let router = build_router();
     let req = Request::builder()
         .method(Method::OPTIONS)
@@ -308,6 +320,7 @@ async fn cors_preflight_matches_starlette() {
 #[tokio::test]
 async fn golden_200_requests_produce_correct_status_and_shape() {
     let _guard = guard();
+    clear_api_key();
     let req_path = fixtures_dir()
         .parent()
         .unwrap()
