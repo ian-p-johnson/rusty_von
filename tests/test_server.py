@@ -4,7 +4,11 @@ from von.server import app
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
+    # Hermetic to ambient auth config: these tests exercise the local app's
+    # contract, and a VON_API_KEY inherited from the environment (e.g. when the
+    # suite runs against a remote target) would otherwise 401 them.
+    monkeypatch.delenv("VON_API_KEY", raising=False)
     return TestClient(app)
 
 

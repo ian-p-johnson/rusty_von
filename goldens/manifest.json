@@ -1,0 +1,27 @@
+{
+  "captured_with": {
+    "python": "3.12.3",
+    "torch": "2.14.0+cu130",
+    "transformers": "5.17.0",
+    "von": "1.0.1"
+  },
+  "device": "cpu",
+  "device_policy": "goldens are a CPU fp32 reference; VON_DEVICE pinned at capture",
+  "checkpoint_revision": "d8bb5e0745d8ee1fb65d536d6d4892d54d5a93fd",
+  "checkpoint_sha256": {
+    "option_marker.pt": "52202f176080d1efe38ca62c45264894fc7e444d332f4af6bac86f4e3146e0f2",
+    "marker_calibration.json": "c3b5345c89be9ee802a5587dcda4e530e69a9bb5965dd839b877b7e8cfff048f",
+    "tokenizer.json": "3703d011b3ee259e00b59b60772f8fd54998d79e8fa5a1388d507eff28f8f09e",
+    "config.json": "968db6072229e54691be4d535487a5c8d8132cc4893b6a3fdfa1e605457a7ec3"
+  },
+  "synthetic_noul_prior": {
+    "a": 0.9,
+    "b": 0.05
+  },
+  "case_count": 53,
+  "probe_count": 45,
+  "notes": [
+    "response bodies are exact HTTP text (TestClient); replay is a string diff",
+    "captured weights carry calibration_map + T=2.2 and NO fitted noul prior; prior_*/probe_only cases inject the synthetic prior at backend level"
+  ]
+}

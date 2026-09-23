@@ -1,5 +1,6 @@
 """High-level convenience API for Von."""
 
+import os
 from typing import Any, Dict, List, Optional, Union
 from .client import VonClient
 from .types import (
@@ -18,7 +19,15 @@ _default_client: Optional[VonClient] = None
 def _get_default_client() -> VonClient:
     global _default_client
     if _default_client is None:
-        _default_client = VonClient(local=True)
+        # Test/verification hook: point the whole API surface at a running von
+        # server (Python or Rust) instead of the in-process engine. This is what
+        # lets the unmodified pytest suite serve as a differential harness
+        # against any implementation of the /v1/systemone contract.
+        remote = os.environ.get("VON_TEST_BASE_URL")
+        if remote:
+            _default_client = VonClient(local=False, base_url=remote)
+        else:
+            _default_client = VonClient(local=True)
     return _default_client
 
 
