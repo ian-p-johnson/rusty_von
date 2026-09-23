@@ -1,0 +1,84 @@
+{
+  "cases": [
+    {
+      "state": "state text",
+      "question": "question?",
+      "options": [
+        "a",
+        "b"
+      ],
+      "packed": "question? state text [SEP] [MASK] a [MASK] b"
+    },
+    {
+      "state": "state text",
+      "question": "",
+      "options": [
+        "a",
+        "b"
+      ],
+      "packed": "state text [SEP] [MASK] a [MASK] b"
+    },
+    {
+      "state": "",
+      "question": "question?",
+      "options": [
+        "a",
+        "b"
+      ],
+      "packed": "question? [SEP] [MASK] a [MASK] b"
+    },
+    {
+      "state": "",
+      "question": "",
+      "options": [
+        "a"
+      ],
+      "packed": " [SEP] [MASK] a"
+    },
+    {
+      "state": "state",
+      "question": "question?",
+      "options": [],
+      "packed": "question? state [SEP] "
+    },
+    {
+      "state": "  padded state  ",
+      "question": "  padded question  ",
+      "options": [
+        "  opt a  ",
+        "opt b",
+        ""
+      ],
+      "packed": "padded question     padded state [SEP] [MASK] opt a [MASK] opt b [MASK] "
+    },
+    {
+      "state": "café 中文",
+      "question": "which?",
+      "options": [
+        "éx",
+        "😀"
+      ],
+      "packed": "which? café 中文 [SEP] [MASK] éx [MASK] 😀"
+    },
+    {
+      "state": "multi\nline\nstate",
+      "question": "multi\nline question",
+      "options": [
+        "a\nb",
+        "c"
+      ],
+      "packed": "multi\nline question multi\nline\nstate [SEP] [MASK] a\nb [MASK] c"
+    },
+    {
+      "state": "s",
+      "question": "q",
+      "options": [
+        "one",
+        "two",
+        "three",
+        "four"
+      ],
+      "packed": "q s [SEP] [MASK] one [MASK] two [MASK] three [MASK] four"
+    }
+  ]
+}

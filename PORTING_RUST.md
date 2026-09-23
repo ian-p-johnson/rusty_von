@@ -573,3 +573,55 @@ Note for later stages: package `__version__` says `1.0.1` while `pyproject.toml`
 says `1.1.1` (pre-existing drift, `von.__version__` feeds the manifest only).
 The server's `VON_DEVICE` must be `cpu` when replaying goldens; GPU responses
 diverge by design and get their own Stage 4 gates.
+
+### Stage 1 — complete (2026-09-23)
+
+Cargo workspace + pure-logic port landed in `von-rs/` (six crates, edition 2024,
+`serde_json/preserve_order` workspace-wide per §3.4). Every pure-logic unit is
+fixture-tested against Python-emitted expectations, and the wire gate replays
+**34 captured error/edge cases byte-identically** against the axum stub server.
+Clippy clean (0 warnings), `cargo fmt` clean, 39 Rust tests green.
+
+- **Fixture generator** (`benchmarks/dump_fixtures.py`, model-free): emits
+  `von-rs/fixtures/*.json` + `wire_errors.jsonl` from the live Python oracle —
+  state formatting (`_format_state` + `str()` for 40 values), `pack_sequence`,
+  `round()` half-even (45 halfway/binary-expansion cases), usage floors,
+  envelope key order (FastAPI render), API error strings, patterns logic (with a
+  fake client), `json.dumps` defaults, presets, and full request/response wire
+  captures (incl. response **and request** headers for CORS preflight).
+- **Crates**: `von-types` (schemas, legacy `pos_criteria`/`neg_criteria`
+  fold-with-warning, pydantic-2.13-compatible validation-error renderer),
+  `von-core` (Python `str()`/`repr()` renderer incl. float repr & quote
+  switching, `format_state`, `pack_sequence`, `{:.4}`-format-and-parse half-even
+  rounding [proven in laya], usage accounting, engine aliases/stamping, the
+  `Engine` trait + structure-faithful **stub engine** with uniform-probability
+  outputs, `json.dumps(ensure_ascii=True)` writer), `von-presets`,
+  `von-patterns` (confidence_gate/route/composite_score/two_stage_choice over
+  the trait), `von-server` (axum), `von-cli` (clap; serve/decide/judge/rate/eval,
+  in-process stub by default, `--base-url`/`VON_BASE_URL` → reqwest HTTP).
+- **Pydantic fidelity findings** (all pinned by fixtures):
+  1. `input_value` in validation errors renders the **original input dict** —
+     fold mutations (pops/inserts) never appear in the message.
+  2. Truncation rule: repr > 51 chars → first 25 + `...` + last 24 (52 total).
+  3. Score criteria union errors emit **two** entries per bad item
+     (`criteria.<i>.str` + `criteria.<i>.dict[str,any]`), str branch first.
+  4. Direct-model construction vs question-dispatch changes the model name
+     **and** whether the `type` key is in `input_value`.
+- **Wire fidelity findings**: FastAPI `json_invalid` 422 bodies carry the
+  Python scanner's char offset (`Expecting value`/`Extra data`) — reimplemented
+  as a small scanner (`pyjson_scan.rs`); `HEAD` on GET routes → **405 with
+  empty body + `allow` header** (Starlette does not auto-allow HEAD, so axum's
+  GET-falls-through-to-HEAD had to be overridden per route); preflight OPTIONS
+  → 200 `OK` `text/plain; charset=utf-8` with the Starlette method list and
+  `max-age: 600`; `"Bearer "` (empty token) → "Unauthorized: invalid API key"
+  while `Basic ...` → "Missing or invalid Bearer token".
+- **Differential signal**: the unmodified pytest suite run against the Rust
+  stub server via `VON_TEST_BASE_URL` gives **34/42 passing**; all 8 failures
+  assert real-weight answer values (Stage 2's parity target), zero are
+  contract/shape failures.
+
+Known Stage 1 divergences (deliberate, revisited in Stage 3+): `--device`
+accepts `auto|cpu` only (ORT EPs land in Stage 4); `--reload` rejected; CLI
+help/error text is clap's, not click's; JSON numbers outside i64/u64 render as
+f64 (unreachable via the HTTP domain); non-printable unicode beyond C0/DEL/U+2028/9
+in `repr` strings is not escaped exhaustively (fixtures pin the JSON-bounded domain).

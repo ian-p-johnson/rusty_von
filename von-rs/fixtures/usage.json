@@ -1,0 +1,76 @@
+{
+  "cases": [
+    {
+      "state": "",
+      "q_chars": 0,
+      "n_answers": 1,
+      "usage": {
+        "input_tokens": 2,
+        "output_tokens": 1
+      }
+    },
+    {
+      "state": "",
+      "q_chars": 4,
+      "n_answers": 2,
+      "usage": {
+        "input_tokens": 2,
+        "output_tokens": 2
+      }
+    },
+    {
+      "state": "abc",
+      "q_chars": 0,
+      "n_answers": 1,
+      "usage": {
+        "input_tokens": 2,
+        "output_tokens": 1
+      }
+    },
+    {
+      "state": "abcd",
+      "q_chars": 0,
+      "n_answers": 1,
+      "usage": {
+        "input_tokens": 2,
+        "output_tokens": 1
+      }
+    },
+    {
+      "state": "abcde",
+      "q_chars": 0,
+      "n_answers": 1,
+      "usage": {
+        "input_tokens": 2,
+        "output_tokens": 1
+      }
+    },
+    {
+      "state": "xxxxxxxx",
+      "q_chars": 9,
+      "n_answers": 3,
+      "usage": {
+        "input_tokens": 4,
+        "output_tokens": 3
+      }
+    },
+    {
+      "state": "café 中文 😀!",
+      "q_chars": 7,
+      "n_answers": 2,
+      "usage": {
+        "input_tokens": 3,
+        "output_tokens": 2
+      }
+    },
+    {
+      "state": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "q_chars": 3,
+      "n_answers": 5,
+      "usage": {
+        "input_tokens": 26,
+        "output_tokens": 5
+      }
+    }
+  ]
+}

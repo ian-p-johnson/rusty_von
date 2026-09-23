@@ -1,0 +1,252 @@
+{
+  "cases": [
+    {
+      "input": "plain string",
+      "formatted": "plain string",
+      "str": "plain string"
+    },
+    {
+      "input": "string with 'single' quotes",
+      "formatted": "string with 'single' quotes",
+      "str": "string with 'single' quotes"
+    },
+    {
+      "input": "string with \"double\" quotes",
+      "formatted": "string with \"double\" quotes",
+      "str": "string with \"double\" quotes"
+    },
+    {
+      "input": "string with both 'single' and \"double\"",
+      "formatted": "string with both 'single' and \"double\"",
+      "str": "string with both 'single' and \"double\""
+    },
+    {
+      "input": "back\\slash and new\nline and tab\tchar",
+      "formatted": "back\\slash and new\nline and tab\tchar",
+      "str": "back\\slash and new\nline and tab\tchar"
+    },
+    {
+      "input": "unicode: café 中文 😀",
+      "formatted": "unicode: café 中文 😀",
+      "str": "unicode: café 中文 😀"
+    },
+    {
+      "input": "control\u0007bell and\u001bdel next",
+      "formatted": "control\u0007bell and\u001bdel next",
+      "str": "control\u0007bell and\u001bdel next"
+    },
+    {
+      "input": "",
+      "formatted": "",
+      "str": ""
+    },
+    {
+      "input": 0,
+      "formatted": "0",
+      "str": "0"
+    },
+    {
+      "input": 7,
+      "formatted": "7",
+      "str": "7"
+    },
+    {
+      "input": -13,
+      "formatted": "-13",
+      "str": "-13"
+    },
+    {
+      "input": 1.5,
+      "formatted": "1.5",
+      "str": "1.5"
+    },
+    {
+      "input": 0.1,
+      "formatted": "0.1",
+      "str": "0.1"
+    },
+    {
+      "input": 3.0,
+      "formatted": "3.0",
+      "str": "3.0"
+    },
+    {
+      "input": -0.0,
+      "formatted": "-0.0",
+      "str": "-0.0"
+    },
+    {
+      "input": 0.30000000000000004,
+      "formatted": "0.30000000000000004",
+      "str": "0.30000000000000004"
+    },
+    {
+      "input": 1e+16,
+      "formatted": "1e+16",
+      "str": "1e+16"
+    },
+    {
+      "input": 1000000000000000.0,
+      "formatted": "1000000000000000.0",
+      "str": "1000000000000000.0"
+    },
+    {
+      "input": 9999999999999998.0,
+      "formatted": "9999999999999998.0",
+      "str": "9999999999999998.0"
+    },
+    {
+      "input": 0.0001,
+      "formatted": "0.0001",
+      "str": "0.0001"
+    },
+    {
+      "input": 1e-05,
+      "formatted": "1e-05",
+      "str": "1e-05"
+    },
+    {
+      "input": 1.2345678901234566e-07,
+      "formatted": "1.2345678901234566e-07",
+      "str": "1.2345678901234566e-07"
+    },
+    {
+      "input": 2.675,
+      "formatted": "2.675",
+      "str": "2.675"
+    },
+    {
+      "input": 1e+300,
+      "formatted": "1e+300",
+      "str": "1e+300"
+    },
+    {
+      "input": 5e-324,
+      "formatted": "5e-324",
+      "str": "5e-324"
+    },
+    {
+      "input": true,
+      "formatted": "True",
+      "str": "True"
+    },
+    {
+      "input": false,
+      "formatted": "False",
+      "str": "False"
+    },
+    {
+      "input": null,
+      "formatted": "None",
+      "str": "None"
+    },
+    {
+      "input": [],
+      "formatted": "[]",
+      "str": "[]"
+    },
+    {
+      "input": [
+        "a",
+        "b"
+      ],
+      "formatted": "['a', 'b']",
+      "str": "['a', 'b']"
+    },
+    {
+      "input": [
+        "mixed",
+        2,
+        3.5,
+        true,
+        null
+      ],
+      "formatted": "['mixed', 2, 3.5, True, None]",
+      "str": "['mixed', 2, 3.5, True, None]"
+    },
+    {
+      "input": [
+        [
+          "nested",
+          [
+            "deep"
+          ]
+        ],
+        "x"
+      ],
+      "formatted": "[['nested', ['deep']], 'x']",
+      "str": "[['nested', ['deep']], 'x']"
+    },
+    {
+      "input": [
+        "quote' in element",
+        "double\" element"
+      ],
+      "formatted": "[\"quote' in element\", 'double\" element']",
+      "str": "[\"quote' in element\", 'double\" element']"
+    },
+    {
+      "input": [
+        "uni é",
+        "😀"
+      ],
+      "formatted": "['uni é', '😀']",
+      "str": "['uni é', '😀']"
+    },
+    {
+      "input": {},
+      "formatted": "",
+      "str": "{}"
+    },
+    {
+      "input": {
+        "a": 1
+      },
+      "formatted": "a: 1",
+      "str": "{'a': 1}"
+    },
+    {
+      "input": {
+        "k": "v",
+        "n": 2,
+        "f": 1.5,
+        "b": true,
+        "z": null
+      },
+      "formatted": "k: v\nn: 2\nf: 1.5\nb: True\nz: None",
+      "str": "{'k': 'v', 'n': 2, 'f': 1.5, 'b': True, 'z': None}"
+    },
+    {
+      "input": {
+        "nested": {
+          "inner": [
+            1,
+            "two",
+            null
+          ]
+        },
+        "list": [
+          "x",
+          "y"
+        ]
+      },
+      "formatted": "nested: {'inner': [1, 'two', None]}\nlist: ['x', 'y']",
+      "str": "{'nested': {'inner': [1, 'two', None]}, 'list': ['x', 'y']}"
+    },
+    {
+      "input": {
+        "empty": {},
+        "elist": []
+      },
+      "formatted": "empty: {}\nelist: []",
+      "str": "{'empty': {}, 'elist': []}"
+    },
+    {
+      "input": {
+        "unié": "café"
+      },
+      "formatted": "unié: café",
+      "str": "{'unié': 'café'}"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/von-types",
+    "crates/von-core",
+    "crates/von-presets",
+    "crates/von-patterns",
+    "crates/von-server",
+    "crates/von-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+indexmap = { version = "2", features = ["serde"] }
+thiserror = "2"
+axum = "0.8"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal"] }
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+bytes = "1"
+clap = { version = "4", features = ["derive"] }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+
+von-types = { path = "crates/von-types" }
+von-core = { path = "crates/von-core" }
+von-presets = { path = "crates/von-presets" }
+von-patterns = { path = "crates/von-patterns" }
+von-server = { path = "crates/von-server" }
+
+[profile.release]
+strip = true
+lto = "thin"

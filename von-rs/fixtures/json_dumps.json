@@ -1,0 +1,159 @@
+{
+  "cases": [
+    {
+      "value": "hello",
+      "compact": "\"hello\"",
+      "indent2": "\"hello\""
+    },
+    {
+      "value": "café 中文 😀",
+      "compact": "\"caf\\u00e9 \\u4e2d\\u6587 \\ud83d\\ude00\"",
+      "indent2": "\"caf\\u00e9 \\u4e2d\\u6587 \\ud83d\\ude00\""
+    },
+    {
+      "value": "quote\" and 'single'",
+      "compact": "\"quote\\\" and 'single'\"",
+      "indent2": "\"quote\\\" and 'single'\""
+    },
+    {
+      "value": "back\\slash\nnewline\ttab",
+      "compact": "\"back\\\\slash\\nnewline\\ttab\"",
+      "indent2": "\"back\\\\slash\\nnewline\\ttab\""
+    },
+    {
+      "value": "ctrl\u0001\u001f",
+      "compact": "\"ctrl\\u0001\\u001f\\u007f\"",
+      "indent2": "\"ctrl\\u0001\\u001f\\u007f\""
+    },
+    {
+      "value": "",
+      "compact": "\"\"",
+      "indent2": "\"\""
+    },
+    {
+      "value": 5,
+      "compact": "5",
+      "indent2": "5"
+    },
+    {
+      "value": -13,
+      "compact": "-13",
+      "indent2": "-13"
+    },
+    {
+      "value": 1.5,
+      "compact": "1.5",
+      "indent2": "1.5"
+    },
+    {
+      "value": 0.1,
+      "compact": "0.1",
+      "indent2": "0.1"
+    },
+    {
+      "value": 1e+16,
+      "compact": "1e+16",
+      "indent2": "1e+16"
+    },
+    {
+      "value": 1000000000000000.0,
+      "compact": "1000000000000000.0",
+      "indent2": "1000000000000000.0"
+    },
+    {
+      "value": 0.0001,
+      "compact": "0.0001",
+      "indent2": "0.0001"
+    },
+    {
+      "value": 1e-05,
+      "compact": "1e-05",
+      "indent2": "1e-05"
+    },
+    {
+      "value": -0.0,
+      "compact": "-0.0",
+      "indent2": "-0.0"
+    },
+    {
+      "value": 3.0,
+      "compact": "3.0",
+      "indent2": "3.0"
+    },
+    {
+      "value": 0.30000000000000004,
+      "compact": "0.30000000000000004",
+      "indent2": "0.30000000000000004"
+    },
+    {
+      "value": 2.675,
+      "compact": "2.675",
+      "indent2": "2.675"
+    },
+    {
+      "value": true,
+      "compact": "true",
+      "indent2": "true"
+    },
+    {
+      "value": false,
+      "compact": "false",
+      "indent2": "false"
+    },
+    {
+      "value": null,
+      "compact": "null",
+      "indent2": "null"
+    },
+    {
+      "value": [],
+      "compact": "[]",
+      "indent2": "[]"
+    },
+    {
+      "value": [
+        "a",
+        1,
+        1.5,
+        true,
+        null
+      ],
+      "compact": "[\"a\", 1, 1.5, true, null]",
+      "indent2": "[\n  \"a\",\n  1,\n  1.5,\n  true,\n  null\n]"
+    },
+    {
+      "value": {
+        "k": "v",
+        "n": 2
+      },
+      "compact": "{\"k\": \"v\", \"n\": 2}",
+      "indent2": "{\n  \"k\": \"v\",\n  \"n\": 2\n}"
+    },
+    {
+      "value": {
+        "unié": [
+          "café",
+          null
+        ]
+      },
+      "compact": "{\"uni\\u00e9\": [\"caf\\u00e9\", null]}",
+      "indent2": "{\n  \"uni\\u00e9\": [\n    \"caf\\u00e9\",\n    null\n  ]\n}"
+    },
+    {
+      "value": {
+        "a": {
+          "b": {
+            "c": [
+              1,
+              {
+                "d": 2
+              }
+            ]
+          }
+        }
+      },
+      "compact": "{\"a\": {\"b\": {\"c\": [1, {\"d\": 2}]}}}",
+      "indent2": "{\n  \"a\": {\n    \"b\": {\n      \"c\": [\n        1,\n        {\n          \"d\": 2\n        }\n      ]\n    }\n  }\n}"
+    }
+  ]
+}

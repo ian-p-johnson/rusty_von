@@ -1,0 +1,104 @@
+{
+  "cases": [
+    {
+      "id": "duplicate_choices",
+      "error": "ValueError",
+      "message": "Duplicate choices found in options list: ['yes', 'yes']"
+    },
+    {
+      "id": "unknown_model",
+      "error": "ValueError",
+      "message": "Unknown model 'option-marker'. Von 1.1 is the only model; accepted aliases: 1.1, default, latest, von, von-1.1, von-latest."
+    },
+    {
+      "id": "unknown_qtype",
+      "error": "ValueError",
+      "message": "Unknown question type 'bogus'"
+    },
+    {
+      "id": "score_join_int",
+      "error": "TypeError",
+      "message": "sequence item 0: expected str instance, int found"
+    },
+    {
+      "id": "score_join_null",
+      "error": "TypeError",
+      "message": "sequence item 1: expected str instance, NoneType found"
+    },
+    {
+      "id": "score_join_bool",
+      "error": "TypeError",
+      "message": "sequence item 1: expected str instance, bool found"
+    },
+    {
+      "id": "choice_criteria_wrong_type",
+      "error": "ValidationError",
+      "message": "1 validation error for Choice\ncriteria\n  Input should be a valid dictionary [type=dict_type, input_value='not a dict', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/dict_type"
+    },
+    {
+      "id": "choice_criteria_int_value",
+      "error": "ValidationError",
+      "message": "1 validation error for Choice\ncriteria.a\n  Input should be a valid string [type=string_type, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type"
+    },
+    {
+      "id": "noul_criteria_int_value",
+      "error": "ValidationError",
+      "message": "2 validation errors for Noul\ninstructions\n  Field required [type=missing, input_value={'criteria': {'true': 't', 'false': 3}}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\ncriteria.false\n  Input should be a valid string [type=string_type, input_value=3, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type"
+    },
+    {
+      "id": "score_criteria_int_item",
+      "error": "ValidationError",
+      "message": "2 validation errors for Score\ncriteria.1.str\n  Input should be a valid string [type=string_type, input_value=7, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type\ncriteria.1.dict[str,any]\n  Input should be a valid dictionary [type=dict_type, input_value=7, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/dict_type"
+    },
+    {
+      "id": "noul_legacy_fold_warning",
+      "error": "DeprecationWarning",
+      "message": "Noul pos_criteria/neg_criteria are deprecated; use criteria={'true': ..., 'false': ...}."
+    },
+    {
+      "id": "noul_legacy_fold_result",
+      "error": "",
+      "message": "{\"type\": \"noul\", \"instructions\": \"Is it down?\", \"criteria\": {\"true\": \"Also down\"}}"
+    },
+    {
+      "id": "noul_legacy_fold_both_result",
+      "error": "",
+      "message": "{\"type\": \"noul\", \"instructions\": \"Is it down?\", \"criteria\": {\"true\": \"Down\", \"false\": \"Up\"}}"
+    },
+    {
+      "id": "noul_legacy_fold_empty_value",
+      "error": "",
+      "message": "{\"type\": \"noul\", \"instructions\": \"Is it down?\", \"criteria\": null}"
+    },
+    {
+      "id": "noul_legacy_conflict",
+      "error": "ValidationError",
+      "message": "1 validation error for Noul\n  Value error, Noul got both 'pos_criteria' and criteria['true']; use criteria only. [type=value_error, input_value={'instructions': 'Is it d...', 'neg_criteria': 'Up'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+    },
+    {
+      "id": "noul_legacy_conflict_false",
+      "error": "ValidationError",
+      "message": "1 validation error for Noul\n  Value error, Noul got both 'neg_criteria' and criteria['false']; use criteria only. [type=value_error, input_value={'instructions': 'Is it d...}, 'neg_criteria': 'Up'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+    },
+    {
+      "id": "noul_instructions_int",
+      "error": "ValidationError",
+      "message": "1 validation error for Noul\ninstructions\n  Input should be a valid string [type=string_type, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type"
+    },
+    {
+      "id": "choice_criteria_int",
+      "error": "ValidationError",
+      "message": "1 validation error for Choice\ncriteria\n  Input should be a valid dictionary [type=dict_type, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/dict_type"
+    },
+    {
+      "id": "choice_criteria_null",
+      "error": "ValidationError",
+      "message": "1 validation error for Choice\ncriteria\n  Input should be a valid dictionary [type=dict_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/dict_type"
+    },
+    {
+      "id": "score_criteria_dict",
+      "error": "ValidationError",
+      "message": "1 validation error for Score\ncriteria\n  Input should be a valid list [type=list_type, input_value={'a': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type"
+    }
+  ]
+}

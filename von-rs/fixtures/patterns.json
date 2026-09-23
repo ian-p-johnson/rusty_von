@@ -1,0 +1,162 @@
+{
+  "cases": [
+    {
+      "name": "route_hit",
+      "output": "handled:billing"
+    },
+    {
+      "name": "route_default_low_conf",
+      "output": "defaulted"
+    },
+    {
+      "name": "route_no_handler_returns_answer",
+      "output": {
+        "type": "choice",
+        "choice": "billing",
+        "probabilities": {
+          "billing": 0.9,
+          "tech": 0.1
+        },
+        "confidence": 0.8
+      }
+    },
+    {
+      "name": "confidence_gate",
+      "output": {
+        "automatic": {
+          "q_confident": {
+            "type": "choice",
+            "choice": "a",
+            "probabilities": {
+              "a": 1.0
+            },
+            "confidence": 0.95
+          },
+          "q_noul": {
+            "type": "noul",
+            "noul": 0.4
+          }
+        },
+        "escalate": {
+          "q_unsure": {
+            "type": "score",
+            "score": 2.0,
+            "confidence": 0.6,
+            "legend": {
+              "0": "l",
+              "1": "m",
+              "2": "h"
+            },
+            "probabilities": {
+              "0": 0.2,
+              "1": 0.6,
+              "2": 0.2
+            }
+          }
+        },
+        "response": {
+          "model": "von-1.1.0",
+          "answers": {
+            "q_confident": {
+              "type": "choice",
+              "choice": "a",
+              "probabilities": {
+                "a": 1.0
+              },
+              "confidence": 0.95
+            },
+            "q_unsure": {
+              "type": "score",
+              "score": 2.0,
+              "confidence": 0.6,
+              "legend": {
+                "0": "l",
+                "1": "m",
+                "2": "h"
+              },
+              "probabilities": {
+                "0": 0.2,
+                "1": 0.6,
+                "2": 0.2
+              }
+            },
+            "q_noul": {
+              "type": "noul",
+              "noul": 0.4
+            }
+          },
+          "usage": {
+            "input_tokens": 20,
+            "output_tokens": 3
+          }
+        }
+      }
+    },
+    {
+      "name": "composite_score",
+      "output": {
+        "score": 0.8944,
+        "breakdown": {
+          "rating": {
+            "raw": 3.2,
+            "normalized": 1.0667,
+            "weight": 2.0
+          },
+          "judgment": {
+            "raw": 0.55,
+            "normalized": 0.55,
+            "weight": 1.0
+          }
+        },
+        "response": {
+          "model": "von-1.1.0",
+          "answers": {
+            "rating": {
+              "type": "score",
+              "score": 3.2,
+              "confidence": 0.9,
+              "legend": {
+                "0": "a",
+                "1": "b",
+                "2": "c",
+                "3": "d"
+              },
+              "probabilities": {
+                "0": 0.1,
+                "1": 0.2,
+                "2": 0.3,
+                "3": 0.4
+              }
+            },
+            "judgment": {
+              "type": "noul",
+              "noul": 0.55
+            },
+            "decision": {
+              "type": "choice",
+              "choice": "x",
+              "probabilities": {
+                "x": 1.0
+              },
+              "confidence": 1.0
+            }
+          },
+          "usage": {
+            "input_tokens": 30,
+            "output_tokens": 3
+          }
+        }
+      }
+    },
+    {
+      "name": "two_stage_choice",
+      "output": {
+        "category": "billing",
+        "category_confidence": 0.9,
+        "choice": "invoice",
+        "choice_confidence": 0.6,
+        "combined_confidence": 0.54
+      }
+    }
+  ]
+}

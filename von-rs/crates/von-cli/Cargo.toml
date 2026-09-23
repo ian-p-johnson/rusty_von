@@ -1,0 +1,18 @@
+[package]
+name = "von-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "von"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true }
+serde_json = { workspace = true }
+indexmap = { workspace = true }
+von-core = { workspace = true }
+von-server = { workspace = true }

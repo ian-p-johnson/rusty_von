@@ -1,0 +1,109 @@
+{
+  "cases": [
+    {
+      "name": "choice",
+      "input": {
+        "model": "von-1.1.0",
+        "answers": {
+          "decision": {
+            "type": "choice",
+            "choice": "a",
+            "probabilities": {
+              "a": 1.0
+            },
+            "confidence": 1.0
+          }
+        },
+        "usage": {
+          "input_tokens": 17,
+          "output_tokens": 1
+        }
+      },
+      "rendered": "{\"model\":\"von-1.1.0\",\"answers\":{\"decision\":{\"type\":\"choice\",\"choice\":\"a\",\"probabilities\":{\"a\":1.0},\"confidence\":1.0}},\"usage\":{\"input_tokens\":17,\"output_tokens\":1}}"
+    },
+    {
+      "name": "noul",
+      "input": {
+        "model": "von-1.1.0",
+        "answers": {
+          "j": {
+            "type": "noul",
+            "noul": 0.4892
+          }
+        },
+        "usage": {
+          "input_tokens": 3,
+          "output_tokens": 1
+        }
+      },
+      "rendered": "{\"model\":\"von-1.1.0\",\"answers\":{\"j\":{\"type\":\"noul\",\"noul\":0.4892}},\"usage\":{\"input_tokens\":3,\"output_tokens\":1}}"
+    },
+    {
+      "name": "score",
+      "input": {
+        "model": "von-1.1.0",
+        "answers": {
+          "rating": {
+            "type": "score",
+            "score": 1.5,
+            "confidence": 0.25,
+            "legend": {
+              "0": "low",
+              "1": "mid",
+              "2": "high"
+            },
+            "probabilities": {
+              "0": 0.125,
+              "1": 0.5,
+              "2": 0.375
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 9,
+          "output_tokens": 1
+        }
+      },
+      "rendered": "{\"model\":\"von-1.1.0\",\"answers\":{\"rating\":{\"type\":\"score\",\"score\":1.5,\"confidence\":0.25,\"legend\":{\"0\":\"low\",\"1\":\"mid\",\"2\":\"high\"},\"probabilities\":{\"0\":0.125,\"1\":0.5,\"2\":0.375}}},\"usage\":{\"input_tokens\":9,\"output_tokens\":1}}"
+    },
+    {
+      "name": "fanout_order",
+      "input": {
+        "model": "von-1.1.0",
+        "answers": {
+          "z_first": {
+            "type": "noul",
+            "noul": 0.5
+          },
+          "a_second": {
+            "type": "choice",
+            "choice": "éx",
+            "probabilities": {
+              "éx": 0.3333,
+              "y": 0.6667
+            },
+            "confidence": 0.333
+          },
+          "m_third": {
+            "type": "score",
+            "score": 0.0,
+            "confidence": 0.0,
+            "legend": {
+              "0": "only",
+              "1": ""
+            },
+            "probabilities": {
+              "0": 0.5,
+              "1": 0.5
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 12,
+          "output_tokens": 3
+        }
+      },
+      "rendered": "{\"model\":\"von-1.1.0\",\"answers\":{\"z_first\":{\"type\":\"noul\",\"noul\":0.5},\"a_second\":{\"type\":\"choice\",\"choice\":\"éx\",\"probabilities\":{\"éx\":0.3333,\"y\":0.6667},\"confidence\":0.333},\"m_third\":{\"type\":\"score\",\"score\":0.0,\"confidence\":0.0,\"legend\":{\"0\":\"only\",\"1\":\"\"},\"probabilities\":{\"0\":0.5,\"1\":0.5}}},\"usage\":{\"input_tokens\":12,\"output_tokens\":3}}"
+    }
+  ]
+}

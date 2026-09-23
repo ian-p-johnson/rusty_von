@@ -1,0 +1,229 @@
+{
+  "cases": [
+    {
+      "value": 0.5,
+      "ndigits": 4,
+      "expected": "0.5"
+    },
+    {
+      "value": 0.15,
+      "ndigits": 4,
+      "expected": "0.15"
+    },
+    {
+      "value": 0.125,
+      "ndigits": 3,
+      "expected": "0.125"
+    },
+    {
+      "value": 2.675,
+      "ndigits": 2,
+      "expected": "2.67"
+    },
+    {
+      "value": 1.005,
+      "ndigits": 2,
+      "expected": "1.0"
+    },
+    {
+      "value": 8.835,
+      "ndigits": 2,
+      "expected": "8.84"
+    },
+    {
+      "value": 1.05,
+      "ndigits": 1,
+      "expected": "1.1"
+    },
+    {
+      "value": 5e-05,
+      "ndigits": 4,
+      "expected": "0.0001"
+    },
+    {
+      "value": 0.00015,
+      "ndigits": 4,
+      "expected": "0.0001"
+    },
+    {
+      "value": 2.5,
+      "ndigits": 0,
+      "expected": "2.0"
+    },
+    {
+      "value": 3.5,
+      "ndigits": 0,
+      "expected": "4.0"
+    },
+    {
+      "value": -0.5,
+      "ndigits": 4,
+      "expected": "-0.5"
+    },
+    {
+      "value": -2.675,
+      "ndigits": 2,
+      "expected": "-2.67"
+    },
+    {
+      "value": 0.92225,
+      "ndigits": 4,
+      "expected": "0.9223"
+    },
+    {
+      "value": 0.92235,
+      "ndigits": 4,
+      "expected": "0.9224"
+    },
+    {
+      "value": 0.1,
+      "ndigits": 4,
+      "expected": "0.1"
+    },
+    {
+      "value": 1.0,
+      "ndigits": 4,
+      "expected": "1.0"
+    },
+    {
+      "value": 0.0,
+      "ndigits": 4,
+      "expected": "0.0"
+    },
+    {
+      "value": 1e+20,
+      "ndigits": 2,
+      "expected": "1e+20"
+    },
+    {
+      "value": 1e-05,
+      "ndigits": 4,
+      "expected": "0.0"
+    },
+    {
+      "value": 0.0001,
+      "ndigits": 4,
+      "expected": "0.0001"
+    },
+    {
+      "value": 0.12345,
+      "ndigits": 4,
+      "expected": "0.1235"
+    },
+    {
+      "value": 0.12344,
+      "ndigits": 4,
+      "expected": "0.1234"
+    },
+    {
+      "value": 0.99995,
+      "ndigits": 4,
+      "expected": "1.0"
+    },
+    {
+      "value": 0.99994999999,
+      "ndigits": 4,
+      "expected": "0.9999"
+    },
+    {
+      "value": 1234.56789,
+      "ndigits": 2,
+      "expected": "1234.57"
+    },
+    {
+      "value": 12.345,
+      "ndigits": 3,
+      "expected": "12.345"
+    },
+    {
+      "value": 0.7,
+      "ndigits": 4,
+      "expected": "0.7"
+    },
+    {
+      "value": -0.12345,
+      "ndigits": 4,
+      "expected": "-0.1235"
+    },
+    {
+      "value": 0.8444999999,
+      "ndigits": 3,
+      "expected": "0.844"
+    },
+    {
+      "value": 0.8445,
+      "ndigits": 3,
+      "expected": "0.845"
+    },
+    {
+      "value": 0.84450000001,
+      "ndigits": 3,
+      "expected": "0.845"
+    },
+    {
+      "value": 1.0666666666,
+      "ndigits": 4,
+      "expected": "1.0667"
+    },
+    {
+      "value": 0.7199999999,
+      "ndigits": 4,
+      "expected": "0.72"
+    },
+    {
+      "value": 2.005,
+      "ndigits": 2,
+      "expected": "2.0"
+    },
+    {
+      "value": 0.5,
+      "ndigits": 3,
+      "expected": "0.5"
+    },
+    {
+      "value": 0.05,
+      "ndigits": 1,
+      "expected": "0.1"
+    },
+    {
+      "value": 0.15,
+      "ndigits": 1,
+      "expected": "0.1"
+    },
+    {
+      "value": 0.25,
+      "ndigits": 1,
+      "expected": "0.2"
+    },
+    {
+      "value": 0.35,
+      "ndigits": 1,
+      "expected": "0.3"
+    },
+    {
+      "value": 0.45,
+      "ndigits": 1,
+      "expected": "0.5"
+    },
+    {
+      "value": 4.25,
+      "ndigits": 2,
+      "expected": "4.25"
+    },
+    {
+      "value": 4.125,
+      "ndigits": 2,
+      "expected": "4.12"
+    },
+    {
+      "value": 4.375,
+      "ndigits": 2,
+      "expected": "4.38"
+    },
+    {
+      "value": -5e-05,
+      "ndigits": 4,
+      "expected": "-0.0001"
+    }
+  ]
+}
