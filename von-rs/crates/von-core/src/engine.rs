@@ -54,41 +54,77 @@ fn resolve_model(model: Option<&str>) -> String {
     }
 }
 
+/// Per-question decision evaluation. The orchestration around it (state
+/// formatting, question parsing, usage accounting, model stamping) is
+/// question-type-independent and lives in [`evaluate_with`]; only the
+/// forward-pass-backed answer construction differs between the stub and the
+/// real ONNX backend.
+pub trait QuestionBackend {
+    fn eval_choice(&self, state_text: &str, q: &von_types::Choice) -> Result<Answer, EngineError>;
+    fn eval_noul(&self, state_text: &str, q: &von_types::Noul) -> Result<Answer, EngineError>;
+    fn eval_score(&self, state_text: &str, q: &von_types::Score) -> Result<Answer, EngineError>;
+}
+
+/// The structure-faithful orchestration the Python backend runs
+/// (`OptionMarkerBackend.evaluate`): format the state, parse every question
+/// (legacy folding + pydantic-shaped validation errors), dispatch to the
+/// backend, accumulate instructions characters, stamp usage and model.
+pub fn evaluate_with<B: QuestionBackend>(
+    backend: &B,
+    state: &Value,
+    questions: &IndexMap<String, Value>,
+    model: Option<&str>,
+) -> Result<SystemOneResponse, EngineError> {
+    let state_str = format_state(state);
+    let mut answers = IndexMap::new();
+    let mut total_q_chars = 0usize;
+
+    for (q_id, q_data) in questions {
+        let mut warnings = Vec::new();
+        let q = parse_question(q_data, &mut warnings).map_err(|e| EngineError(e.detail()))?;
+        for w in warnings {
+            eprintln!("[von] warning: {w}");
+        }
+
+        let answer = match &q {
+            von_types::Question::Choice(qc) => backend.eval_choice(&state_str, qc)?,
+            von_types::Question::Noul(qn) => backend.eval_noul(&state_str, qn)?,
+            von_types::Question::Score(qs) => backend.eval_score(&state_str, qs)?,
+        };
+        total_q_chars += q.instructions().chars().count();
+        answers.insert(q_id.clone(), answer);
+    }
+
+    let usage = compute_usage(&state_str, total_q_chars, answers.len());
+    Ok(SystemOneResponse {
+        model: resolve_model(model),
+        answers,
+        usage,
+    })
+}
+
 pub struct StubEngine;
 
-impl Engine for StubEngine {
+impl QuestionBackend for StubEngine {
+    fn eval_choice(&self, _state_text: &str, q: &von_types::Choice) -> Result<Answer, EngineError> {
+        evaluate_choice_stub(q)
+    }
+    fn eval_noul(&self, _state_text: &str, q: &von_types::Noul) -> Result<Answer, EngineError> {
+        Ok(evaluate_noul_stub(q))
+    }
+    fn eval_score(&self, _state_text: &str, q: &von_types::Score) -> Result<Answer, EngineError> {
+        evaluate_score_stub(q)
+    }
+}
+
+impl<T: QuestionBackend> Engine for T {
     fn evaluate(
         &self,
         state: &Value,
         questions: &IndexMap<String, Value>,
         model: Option<&str>,
     ) -> Result<SystemOneResponse, EngineError> {
-        let state_str = format_state(state);
-        let mut answers = IndexMap::new();
-        let mut total_q_chars = 0usize;
-
-        for (q_id, q_data) in questions {
-            let mut warnings = Vec::new();
-            let q = parse_question(q_data, &mut warnings).map_err(|e| EngineError(e.detail()))?;
-            for w in warnings {
-                eprintln!("[von] warning: {w}");
-            }
-
-            let answer = match &q {
-                von_types::Question::Choice(qc) => evaluate_choice_stub(qc)?,
-                von_types::Question::Noul(qn) => evaluate_noul_stub(qn),
-                von_types::Question::Score(qs) => evaluate_score_stub(qs)?,
-            };
-            total_q_chars += q.instructions().chars().count();
-            answers.insert(q_id.clone(), answer);
-        }
-
-        let usage = compute_usage(&state_str, total_q_chars, answers.len());
-        Ok(SystemOneResponse {
-            model: resolve_model(model),
-            answers,
-            usage,
-        })
+        evaluate_with(self, state, questions, model)
     }
 }
 
@@ -136,7 +172,7 @@ fn evaluate_noul_stub(q: &von_types::Noul) -> Answer {
     }
 }
 
-fn python_join_error_message(items: &[Value]) -> Option<String> {
+pub fn python_join_error_message(items: &[Value]) -> Option<String> {
     for (i, item) in items.iter().enumerate() {
         if !item.is_string() {
             let py_type = match item {
@@ -156,7 +192,7 @@ fn python_join_error_message(items: &[Value]) -> Option<String> {
     None
 }
 
-fn score_level_description(item: &von_types::ScoreCriterion) -> Result<String, EngineError> {
+pub fn score_level_description(item: &von_types::ScoreCriterion) -> Result<String, EngineError> {
     match item {
         von_types::ScoreCriterion::Text(text) => Ok(text.trim().to_string()),
         von_types::ScoreCriterion::Map(map) => {

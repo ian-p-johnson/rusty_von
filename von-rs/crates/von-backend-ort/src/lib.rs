@@ -3,6 +3,7 @@
 //! through `ort` and reproduces the Python backend's decision math
 //! (`src/von/backends/option_marker_backend.py`) operation-for-operation.
 
+pub mod engine;
 pub mod session;
 pub mod special;
 pub mod temperature;
@@ -12,6 +13,7 @@ use std::path::{Path, PathBuf};
 use tokenizers::Tokenizer;
 use von_core::EngineError;
 
+pub use engine::OrtEngine;
 pub use session::VonSession;
 pub use special::{SpecialIds, VON_SPECIAL};
 pub use temperature::{Calibration, NoulPrior};

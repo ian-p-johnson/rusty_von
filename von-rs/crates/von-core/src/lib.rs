@@ -9,8 +9,9 @@ pub mod rounding;
 pub mod usage;
 
 pub use engine::{
-    Engine, EngineError, StubEngine, VON_CURRENT_ALIASES, VON_MODEL_ID, VON_VERSION, decide,
-    is_supported_alias, judge, rate, resolved_model_id, unknown_model_message,
+    Engine, EngineError, QuestionBackend, StubEngine, VON_CURRENT_ALIASES, VON_MODEL_ID,
+    VON_VERSION, decide, evaluate_with, is_supported_alias, judge, python_join_error_message, rate,
+    resolved_model_id, score_level_description, unknown_model_message,
 };
 pub use fmt::format_state;
 pub use pack::pack_sequence;
