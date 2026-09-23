@@ -111,14 +111,13 @@ impl Calibration {
     pub fn load(snapshot: &Path) -> Result<Self, EngineError> {
         let path = snapshot.join("marker_calibration.json");
         let data: Value = match std::fs::read_to_string(&path) {
-            Ok(text) => serde_json::from_str(&text).map_err(|e| {
-                EngineError(format!("marker_calibration.json parse failed: {e}"))
-            })?,
+            Ok(text) => serde_json::from_str(&text)
+                .map_err(|e| EngineError(format!("marker_calibration.json parse failed: {e}")))?,
             Err(e) => {
                 return Err(EngineError(format!(
                     "marker_calibration.json missing ({}): {e}",
                     path.display()
-                )))
+                )));
             }
         };
         let default_temp = data

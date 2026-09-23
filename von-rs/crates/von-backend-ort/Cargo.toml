@@ -17,11 +17,17 @@ indexmap = { workspace = true }
 sha2 = "0.10"
 
 [features]
-default = []
-# CUDA execution provider via ORT_DYLIB_PATH (an official onnxruntime-gpu dylib).
+default = ["load-dynamic"]
+# CPU + CUDA both run through an onnxruntime shared library given by
+# ORT_DYLIB_PATH instead of ort-sys's downloaded prebuilt binaries:
 #
-# Uses load-dynamic rather than ort-sys's prebuilt binaries: as of Stage 2 the
-# pyke download's own CUDA kernels lack sm_120 (Blackwell) SASS/PTX — the
-# official onnxruntime-gpu build works (verified on an RTX 5070 Ti via laya).
-# Install it with: .venv/bin/pip install onnxruntime-gpu
-cuda = ["ort/cuda", "ort/load-dynamic"]
+# 1. Numerics: the Rust port must match the same ORT build the parity
+#    instruments use (the official wheel). The pyke-downloaded 1.2x build
+#    diverges up to ~3e-4 from the torch oracle on this graph, while the
+#    1.30 wheel dylib stays under ~5e-5.
+# 2. Blackwell (sm_120): the downloaded CUDA kernels lack sm_120 SASS/PTX
+#    and abort with cudaErrorNoKernelImageForDevice; the official
+#    onnxruntime-gpu wheel works (verified on an RTX 5070 Ti via laya).
+#    Install it with: .venv/bin/pip install onnxruntime-gpu
+load-dynamic = ["ort/load-dynamic"]
+cuda = ["ort/cuda", "load-dynamic"]

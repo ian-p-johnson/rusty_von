@@ -3,6 +3,7 @@
 //! through `ort` and reproduces the Python backend's decision math
 //! (`src/von/backends/option_marker_backend.py`) operation-for-operation.
 
+pub mod session;
 pub mod special;
 pub mod temperature;
 
@@ -11,6 +12,7 @@ use std::path::{Path, PathBuf};
 use tokenizers::Tokenizer;
 use von_core::EngineError;
 
+pub use session::VonSession;
 pub use special::{SpecialIds, VON_SPECIAL};
 pub use temperature::{Calibration, NoulPrior};
 
@@ -25,22 +27,24 @@ pub fn snapshot_dir() -> Result<PathBuf, EngineError> {
         return if p.is_dir() {
             Ok(p)
         } else {
-            Err(EngineError(format!("VON_SNAPSHOT_DIR is not a directory: {}", p.display())))
+            Err(EngineError(format!(
+                "VON_SNAPSHOT_DIR is not a directory: {}",
+                p.display()
+            )))
         };
     }
     let home = std::env::var("HOME")
         .map_err(|_| EngineError("cannot resolve home directory".to_string()))?;
-    let snapshots = Path::new(&home)
-        .join(".cache/huggingface/hub/models--wfzyx--von/snapshots");
+    let snapshots = Path::new(&home).join(".cache/huggingface/hub/models--wfzyx--von/snapshots");
     let mut entries: Vec<PathBuf> = std::fs::read_dir(&snapshots)
         .map_err(|e| EngineError(format!("HF cache missing ({}): {e}", snapshots.display())))?
         .filter_map(|e| e.ok().map(|e| e.path()))
         .filter(|p| p.is_dir())
         .collect();
     entries.sort();
-    entries.pop().ok_or_else(|| {
-        EngineError(format!("no snapshots under {}", snapshots.display()))
-    })
+    entries
+        .pop()
+        .ok_or_else(|| EngineError(format!("no snapshots under {}", snapshots.display())))
 }
 
 /// Load the fast tokenizer (the same Rust `tokenizers` implementation the

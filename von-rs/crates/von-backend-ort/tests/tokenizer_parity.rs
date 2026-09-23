@@ -16,15 +16,26 @@ fn fixtures_dir() -> PathBuf {
 
 #[test]
 fn special_ids_match_fixture() {
-    let fx: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(fixtures_dir().join("tokens.json")).unwrap(),
-    )
-    .unwrap();
+    let fx: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(fixtures_dir().join("tokens.json")).unwrap())
+            .unwrap();
     let meta = &fx["tokenizer"];
-    assert_eq!(VON_SPECIAL.mask, meta["mask_token_id"].as_u64().unwrap() as u32);
-    assert_eq!(VON_SPECIAL.sep, meta["sep_token_id"].as_u64().unwrap() as u32);
-    assert_eq!(VON_SPECIAL.cls, meta["cls_token_id"].as_u64().unwrap() as u32);
-    assert_eq!(VON_SPECIAL.pad, meta["pad_token_id"].as_u64().unwrap() as u32);
+    assert_eq!(
+        VON_SPECIAL.mask,
+        meta["mask_token_id"].as_u64().unwrap() as u32
+    );
+    assert_eq!(
+        VON_SPECIAL.sep,
+        meta["sep_token_id"].as_u64().unwrap() as u32
+    );
+    assert_eq!(
+        VON_SPECIAL.cls,
+        meta["cls_token_id"].as_u64().unwrap() as u32
+    );
+    assert_eq!(
+        VON_SPECIAL.pad,
+        meta["pad_token_id"].as_u64().unwrap() as u32
+    );
 
     // Pin the tokenizer.json bytes against the manifest-captured hash so a
     // silent cache refresh cannot invalidate the corpus.
@@ -33,15 +44,18 @@ fn special_ids_match_fixture() {
     use sha2::Digest;
     let got = sha2::Sha256::digest(&bytes);
     let want = meta["tokenizer_json_sha256"].as_str().unwrap();
-    assert_eq!(format!("{got:x}"), want, "tokenizer.json drifted from the pinned revision");
+    assert_eq!(
+        format!("{got:x}"),
+        want,
+        "tokenizer.json drifted from the pinned revision"
+    );
 }
 
 #[test]
 fn token_ids_match_python_for_every_golden_encoding() {
-    let fx: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(fixtures_dir().join("tokens.json")).unwrap(),
-    )
-    .unwrap();
+    let fx: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(fixtures_dir().join("tokens.json")).unwrap())
+            .unwrap();
 
     let snapshot = snapshot_dir().unwrap();
     let tok = load_tokenizer(&snapshot).unwrap();
@@ -76,7 +90,12 @@ fn token_ids_match_python_for_every_golden_encoding() {
             .filter(|(_, t)| **t == VON_SPECIAL.mask)
             .map(|(i, _)| i)
             .collect();
-        assert_eq!(got_masks, want_masks, "mask positions diverge for {}", enc["id"].as_str().unwrap());
+        assert_eq!(
+            got_masks,
+            want_masks,
+            "mask positions diverge for {}",
+            enc["id"].as_str().unwrap()
+        );
         checked += 1;
     }
     assert_eq!(checked, 52, "expected the full encoding corpus");
@@ -86,7 +105,8 @@ fn token_ids_match_python_for_every_golden_encoding() {
         let want = sc["count"].as_u64().unwrap() as usize;
         let got = tok.encode(state, false).unwrap().get_ids().len();
         assert_eq!(
-            got, want,
+            got,
+            want,
             "add_special_tokens=False count diverges for {}",
             sc["id"].as_str().unwrap()
         );
