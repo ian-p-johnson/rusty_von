@@ -116,6 +116,27 @@ impl Parser {
         }
     }
 
+    /// Read exactly 4 hex digits (advancing past them) after a `\u`.
+    /// Fewer than 4 chars available -> the unterminated-string error;
+    /// non-hex digits fall back to U+FFFD exactly like the previous
+    /// `unwrap_or(0xfffd)` behavior.
+    fn parse_hex4(&mut self, start: usize) -> Result<u32, JsonScanError> {
+        if self.pos + 4 > self.chars.len() {
+            self.pos = start;
+            return Err(self.err("Unterminated string starting at"));
+        }
+        let hex: String = self.chars[self.pos..self.pos + 4].iter().collect();
+        self.pos += 4;
+        let mut cp = 0u32;
+        for c in hex.chars() {
+            match c.to_digit(16) {
+                Some(d) => cp = cp * 16 + d,
+                None => return Ok(0xfffd),
+            }
+        }
+        Ok(cp)
+    }
+
     fn parse_string(&mut self) -> Result<String, JsonScanError> {
         let start = self.pos;
         self.pos += 1;
@@ -133,34 +154,76 @@ impl Parser {
                 Some('\\') => {
                     self.pos += 1;
                     match self.peek() {
-                        Some('"') => out.push('"'),
-                        Some('\\') => out.push('\\'),
-                        Some('/') => out.push('/'),
-                        Some('b') => out.push('\u{8}'),
-                        Some('f') => out.push('\u{c}'),
-                        Some('n') => out.push('\n'),
-                        Some('r') => out.push('\r'),
-                        Some('t') => out.push('\t'),
+                        Some('"') => {
+                            out.push('"');
+                            self.pos += 1;
+                        }
+                        Some('\\') => {
+                            out.push('\\');
+                            self.pos += 1;
+                        }
+                        Some('/') => {
+                            out.push('/');
+                            self.pos += 1;
+                        }
+                        Some('b') => {
+                            out.push('\u{8}');
+                            self.pos += 1;
+                        }
+                        Some('f') => {
+                            out.push('\u{c}');
+                            self.pos += 1;
+                        }
+                        Some('n') => {
+                            out.push('\n');
+                            self.pos += 1;
+                        }
+                        Some('r') => {
+                            out.push('\r');
+                            self.pos += 1;
+                        }
+                        Some('t') => {
+                            out.push('\t');
+                            self.pos += 1;
+                        }
                         Some('u') => {
                             self.pos += 1;
-                            let hex: String = self.chars
-                                [self.pos..(self.pos + 4).min(self.chars.len())]
-                                .iter()
-                                .collect();
-                            if hex.chars().count() != 4 {
-                                self.pos = start;
-                                return Err(self.err("Unterminated string starting at"));
-                            }
-                            let cp = u32::from_str_radix(&hex, 16).unwrap_or(0xfffd);
-                            out.push(char::from_u32(cp).unwrap_or('\u{fffd}'));
-                            self.pos += 3;
+                            let cp = self.parse_hex4(start)?;
+                            // Python's json combines UTF-16 surrogate pairs
+                            // (\uD83D\uDE00 -> U+1F600); the golden request
+                            // bodies are ensure_ascii=True, so astral chars
+                            // always arrive this way. A lone high surrogate
+                            // (which Python's str can represent) has no Rust
+                            // char and is unreachable in the JSON-bounded
+                            // request domain; it becomes U+FFFD.
+                            let ch = if (0xd800..0xdc00).contains(&cp) {
+                                if self.peek() == Some('\\')
+                                    && self.chars.get(self.pos + 1) == Some(&'u')
+                                {
+                                    let save = self.pos;
+                                    self.pos += 2;
+                                    let lo = self.parse_hex4(start)?;
+                                    if (0xdc00..0xe000).contains(&lo) {
+                                        let combined =
+                                            0x10000 + (cp - 0xd800) * 0x400 + (lo - 0xdc00);
+                                        char::from_u32(combined).unwrap_or('\u{fffd}')
+                                    } else {
+                                        self.pos = save;
+                                        '\u{fffd}'
+                                    }
+                                } else {
+                                    '\u{fffd}'
+                                }
+                            } else {
+                                char::from_u32(cp).unwrap_or('\u{fffd}')
+                            };
+                            out.push(ch);
                         }
                         _ => {
                             self.pos = start;
                             return Err(self.err("Unterminated string starting at"));
                         }
                     }
-                    self.pos += 1;
                 }
                 Some(c) => {
                     out.push(c);

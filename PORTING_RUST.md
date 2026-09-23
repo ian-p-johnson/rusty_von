@@ -625,3 +625,82 @@ accepts `auto|cpu` only (ORT EPs land in Stage 4); `--reload` rejected; CLI
 help/error text is clap's, not click's; JSON numbers outside i64/u64 render as
 f64 (unreachable via the HTTP domain); non-printable unicode beyond C0/DEL/U+2028/9
 in `repr` strings is not escaped exhaustively (fixtures pin the JSON-bounded domain).
+
+### Stage 2 — complete (2026-09-24)
+
+Route A executed end to end in `von-rs/crates/von-backend-ort`; every Stage 2
+exit criterion met. **The unmodified 42-test pytest suite passes against the
+Rust engine over HTTP (42/42 remote, 42/42 in-process).** Artifacts: ONNX graph
+`von-rs/artifacts/` (gitignored, regenerable), everything else committed.
+
+- **M1 tokenizer harness** (`benchmarks/dump_tokens.py` → `fixtures/tokens.json`,
+  committed): 52 golden encodings (incl. 7 null-state packings) + 45
+  `add_special_tokens=False` state counts, special IDs pinned from the Python
+  `AutoTokenizer` (mask 50284 / sep 50282). 100% token parity. **Finding: the
+  shipped `tokenizer.json` stores a 512-token truncation + BatchLongest
+  padding config that Python's bare `tok(text)` call never applies** — the Rust
+  loader detaches both; before the fix the long-state case encoded to 512
+  tokens vs Python's 5061.
+- **M2 export + ort spike** (`von-rs/scripts/export_onnx.py`): fused
+  encoder+scorer graph with in-graph `[MASK]` gather, dynamo exporter, opset
+  18, external data inlined — laya's recipe worked first try; eager-vs-traced
+  Δ = 0.0. Two findings:
+  1. `AutoModel.from_pretrained(model.safetensors)` leaves the scorer head
+     **randomly initialized** (the safetensors bundle's head keys are
+     "UNEXPECTED"); the export must `load_state_dict(option_marker.pt,
+     strict=True)` exactly like the backend. Caught by the logit gate, not by
+     the eager-vs-traced assert (both sides shared the same random head).
+  2. **The ORT build matters numerically.** `ort-sys`'s downloaded 1.2x
+     runtime drifts up to **3.2e-4** from the torch oracle on this graph,
+     while Python's onnxruntime 1.30 wheel on the *same exported file* stays
+     at 4.9e-5. Fix: `ort/load-dynamic` pointed at the wheel's
+     `libonnxruntime.so` — Rust then reproduces Python-ORT's worst-case
+     exactly (**max |Δ logit| = 4.864e-5** over 45 probes + 7 null passes,
+     gate 1e-4). The same mechanism is the Stage 4 Blackwell fix (sm_120
+     kernels ship only in official builds), so the `cuda` feature (wheel
+     dylib via `ORT_DYLIB_PATH`) is wired from day one.
+  - Gate-note: the plan's `rel ≤ 1e-5 on |logit| > 1` clause is unreachable
+    inside the stated ORT-vs-libtorch band; laya's executed gate (pure
+    L∞ ≤ 1e-4) is what von enforces, with argmax + exact-after-rounding as
+    the binding downstream gates.
+- **M3+M4 full engine** (`src/engine.rs`): operation-for-operation port of the
+  backend math — calibration-map effective temperature (fp32 entropy, real
+  tokenizer `log_tokens` feature, `lo`/`hi` clamp), zero-shot noul debias
+  dual pass with fp32 scalar arithmetic (Python weak-promotes floats into
+  f32 tensors), first-max argmax fold, fp32 softmax widened like
+  `Tensor.tolist()`, half-even API rounding. von-core gained a
+  `QuestionBackend` seam (`evaluate_with`) so stub and real engines share one
+  orchestration and one 422-contract source. Parity:
+  - **42/42 backend golden responses reproduced; 40 byte-identical, 2 at
+    exactly 1 ulp of the 4th decimal** (`score_k5` 0.6572/0.6573, `fanout`
+    auth 0.1255/0.1256) — inside the plan's ≤ 1-ulp envelope; the
+    byte-identical rate is pinned ≥ 40/42 so drift fails loudly.
+  - Fitted zero-shot prior branch (`a·bias+b`) pinned 4/4 against the
+    logits.jsonl probe rows.
+  - **Stage 0 capture quirk (documented, goldens unchanged): the `prior_*`
+    HTTP goldens record the plain zero-shot path** — capture injected the
+    synthetic prior into its probe backend while the server app holds a
+    separate instance, so those response bodies never saw the prior. The
+    goldens remain the contract exactly as captured; the prior branch is
+    pinned at probe level.
+- **M5 server + CLI wiring**: `build_engine_router(Arc<dyn Engine>)` (Engine
+  now Send+Sync); CLI resolves `VON_ONNX`/repo-relative artifact with stub
+  fallback. **Wire finding from the live replay: `pyjson_scan` decoded
+  `\uD83D\uDE00`-style escaped surrogate pairs into two U+FFFDs** — the
+  golden request bodies are `ensure_ascii=True`, so astral chars (🀄 🔥)
+  reached the tokenizer corrupted *only* over HTTP (the in-process tests
+  parse JSON with serde_json, which combines pairs). Fixed with Python's
+  surrogate-pair combining; after the fix:
+  - `replay_golden.py`: **53/53 replayed (51 exact byte-for-byte; the 2
+    known 1-ulp flips), incl. the 401 auth contract with `--auth`.**
+  - **pytest: 42/42 against the Rust server (`VON_TEST_BASE_URL`), 42/42
+    in-process.**
+  - `wire.rs` env race fixed: non-auth tests clear ambient `VON_API_KEY`
+    inside the guard window (mirrors the Stage 0 `test_server.py` fix).
+- Deferred (deliberate): jabr v2 accuracy fingerprint over HTTP lands with
+  Stage 3's differential harness (no HTTP adapter exists in
+  `run_marker_benchmark.py` yet); device/EP support and per-device parity are
+  Stage 4 per plan.
+
+Stage 3 next: differential fuzz harness (`diff_servers.py`), CLI/`--device`
+surface alignment, TS SDK suite against the Rust server, jabr-over-HTTP.
