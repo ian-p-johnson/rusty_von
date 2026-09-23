@@ -7,6 +7,7 @@ members = [
     "crates/von-patterns",
     "crates/von-server",
     "crates/von-cli",
+    "crates/von-backend-ort",
 ]
 
 [workspace.package]
@@ -26,12 +27,17 @@ http-body-util = "0.1"
 bytes = "1"
 clap = { version = "4", features = ["derive"] }
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+tokenizers = "0.21"
+# Pinned to laya's verified rc (Blackwell CUDA works via the `cuda` feature's
+# load-dynamic path); rc.13's API differs from newer rc.4+ releases.
+ort = "=2.0.0-rc.13"
 
 von-types = { path = "crates/von-types" }
 von-core = { path = "crates/von-core" }
 von-presets = { path = "crates/von-presets" }
 von-patterns = { path = "crates/von-patterns" }
 von-server = { path = "crates/von-server" }
+von-backend-ort = { path = "crates/von-backend-ort" }
 
 [profile.release]
 strip = true

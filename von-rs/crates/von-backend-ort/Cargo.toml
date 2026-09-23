@@ -1,0 +1,27 @@
+[package]
+name = "von-backend-ort"
+description = "ONNX Runtime backend for the von Option-Marker engine (Stage 2, Route A)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+von-core = { workspace = true }
+von-types = { workspace = true }
+ort = { workspace = true }
+tokenizers = { workspace = true }
+serde_json = { workspace = true }
+indexmap = { workspace = true }
+
+[dev-dependencies]
+sha2 = "0.10"
+
+[features]
+default = []
+# CUDA execution provider via ORT_DYLIB_PATH (an official onnxruntime-gpu dylib).
+#
+# Uses load-dynamic rather than ort-sys's prebuilt binaries: as of Stage 2 the
+# pyke download's own CUDA kernels lack sm_120 (Blackwell) SASS/PTX — the
+# official onnxruntime-gpu build works (verified on an RTX 5070 Ti via laya).
+# Install it with: .venv/bin/pip install onnxruntime-gpu
+cuda = ["ort/cuda", "ort/load-dynamic"]

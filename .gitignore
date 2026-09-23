@@ -14,6 +14,10 @@ data/
 src/von/local_backends/
 js/node_modules/
 
+# Stage 2: exported ONNX artifact (~1.7 GB, regenerable via
+# von-rs/scripts/export_onnx.py from the pinned HF revision).
+von-rs/artifacts/
+
 _vizdoom.ini
 data_long/
 
