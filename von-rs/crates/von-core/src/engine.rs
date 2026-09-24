@@ -193,6 +193,19 @@ pub fn python_join_error_message(items: &[Value]) -> Option<String> {
     None
 }
 
+/// Python truthiness over the JSON domain: None/False/0/0.0/""/[]/{} are
+/// falsy, everything else truthy.
+fn py_truthy(v: &Value) -> bool {
+    match v {
+        Value::Null => false,
+        Value::Bool(b) => *b,
+        Value::Number(n) => n.as_f64().map(|f| f != 0.0).unwrap_or(true),
+        Value::String(s) => !s.is_empty(),
+        Value::Array(a) => !a.is_empty(),
+        Value::Object(o) => !o.is_empty(),
+    }
+}
+
 pub fn score_level_description(item: &von_types::ScoreCriterion) -> Result<String, EngineError> {
     match item {
         von_types::ScoreCriterion::Text(text) => Ok(text.trim().to_string()),
@@ -201,32 +214,33 @@ pub fn score_level_description(item: &von_types::ScoreCriterion) -> Result<Strin
                 Some(v) => von_types::py_str(v),
                 None => String::new(),
             };
+            // py: `f" Examples: {', '.join(examples)}" if examples else ""` —
+            // falsy examples render as "", truthy non-iterables raise
+            // "can only join an iterable" (regardless of type), dicts join
+            // their keys, strings join per-character.
             let ex_str = match map.get("examples") {
                 None => String::new(),
-                Some(Value::Null) => String::new(),
-                Some(Value::String(s)) if s.is_empty() => String::new(),
+                Some(v) if !py_truthy(v) => String::new(),
                 Some(Value::String(s)) => {
                     let joined: Vec<String> = s.chars().map(|c| c.to_string()).collect();
                     format!(" Examples: {}", joined.join(", "))
                 }
                 Some(Value::Array(items)) => {
-                    if items.is_empty() {
-                        String::new()
-                    } else if let Some(msg) = python_join_error_message(items) {
+                    if let Some(msg) = python_join_error_message(items) {
                         return Err(EngineError(msg));
-                    } else {
-                        let joined: Vec<String> = items
-                            .iter()
-                            .map(|v| v.as_str().unwrap_or_default().to_string())
-                            .collect();
-                        format!(" Examples: {}", joined.join(", "))
                     }
+                    let joined: Vec<String> = items
+                        .iter()
+                        .map(|v| v.as_str().unwrap_or_default().to_string())
+                        .collect();
+                    format!(" Examples: {}", joined.join(", "))
                 }
-                Some(other) => {
-                    return Err(EngineError(format!(
-                        "'{}' object is not iterable",
-                        von_types::type_name(other)
-                    )));
+                Some(Value::Object(map)) => {
+                    let joined: Vec<String> = map.keys().cloned().collect();
+                    format!(" Examples: {}", joined.join(", "))
+                }
+                Some(_) => {
+                    return Err(EngineError("can only join an iterable".to_string()));
                 }
             };
             Ok(format!("{what}{ex_str}").trim().to_string())

@@ -602,7 +602,10 @@ Clippy clean (0 warnings), `cargo fmt` clean, 39 Rust tests green.
 - **Pydantic fidelity findings** (all pinned by fixtures):
   1. `input_value` in validation errors renders the **original input dict** —
      fold mutations (pops/inserts) never appear in the message.
-  2. Truncation rule: repr > 51 chars → first 25 + `...` + last 24 (52 total).
+   2. Truncation rule: repr > 51 chars → first 25 + `...` + last 24 (52 total).
+      (Superseded in Stage 3: pydantic-core truncates by BYTES — >50 bytes,
+      `floor_char_boundary(25)` + `...` + `ceil_char_boundary(len−24)` — the
+      char-based reading only agreed on ASCII; see Stage 3 log.)
   3. Score criteria union errors emit **two** entries per bad item
      (`criteria.<i>.str` + `criteria.<i>.dict[str,any]`), str branch first.
   4. Direct-model construction vs question-dispatch changes the model name
@@ -704,3 +707,99 @@ Rust engine over HTTP (42/42 remote, 42/42 in-process).** Artifacts: ONNX graph
 
 Stage 3 next: differential fuzz harness (`diff_servers.py`), CLI/`--device`
 surface alignment, TS SDK suite against the Rust server, jabr-over-HTTP.
+
+### Stage 3 — server & CLI parity (2026-09-24)
+
+Scope decisions taken up front: full CLI `--device` surface now (GPU aliases
+error until Stage 4 EPs), jabr-over-HTTP included in this stage, clap help text
+stays (help text is not contract; the `--model` choice set is).
+
+- **Oracle pin (`VON_HF_REVISION`) — the stage's first incident.** Upstream
+  `wfzyx/von` moved `main` mid-stage (new snapshot `5df8185a…`, `refs/main`
+  updated): a freshly booted Python oracle silently diverged from the goldens
+  (~37/53, huge probability gaps), while the Rust side still matched — its
+  `snapshot_dir()` picks the lexicographically-newest snapshot and the new
+  revision hash happens to sort *before* the pinned one. Goldens pin revision
+  `d8bb5e07…` (manifest sha256s). Fix, kept permanently: Python Hub loads
+  (`AutoConfig/AutoModel/AutoTokenizer` + both `hf_hub_download`s) honor
+  `VON_HF_REVISION`; Rust `snapshot_dir()` resolves it too — one env var pins
+  both sides. `diff_servers.py` and `verify_python_oracle.sh` read the revision
+  from `goldens/manifest.json` (single source of truth). Lesson recorded:
+  resolution-by-luck is not a pin.
+- **Differential harness** (`scripts/diff_servers.py`): boots or attaches to
+  both servers (ports via `VON_DIFF_PY_PORT`/`VON_DIFF_RS_PORT`, §7.1), then
+  three legs — live py-vs-rs, rs-vs-golden, py-vs-golden — plus a seeded,
+  deterministic fuzz stream (default 10k, `--fuzz`/`--seed`): states across the
+  whole JSON domain (nested dicts, bool/None/float leaves, unicode incl.
+  astral/surrogate-pair escapes, literal `[MASK]`/`[SEP]`, control chars,
+  medium-long), a question zoo with pathological cases (both-criteria
+  conflicts, union-roulette score items, join-crash examples, unknown types,
+  empty choices), malformed/truncated JSON, content-type variants, auth
+  probes, GET/HEAD/OPTIONS protocol probes. Comparison: byte-equality with a
+  per-field tolerance envelope (probabilities/noul ≤ 2 units of the 4th
+  decimal, confidence ≤ 1 unit of the 3rd, score ≤ 1 unit of the 2nd — the
+  accepted Stage 2 ORT↔torch logit band straddles rounding boundaries at each
+  field's own precision in rare cases); anything beyond is a divergence and
+  fails the gate. Status histograms printed per phase; transport errors retry
+  once and must match to count.
+- **Contract bugs the fuzzer flushed out** (all invisible to the golden corpus,
+  each now pinned by the fuzz stream):
+  1. Rust server checked auth *before* body parse/validate → 401 where FastAPI
+     yields 422 `json_invalid` (body parsing happens in the framework, before
+     the endpoint whose first act is the auth check). Handler reordered:
+     parse/validate → auth → evaluate.
+  2. Empty body + non-JSON content-type: FastAPI's missing-body check precedes
+     content-type dispatch → `missing`/"Field required"; rs returned
+     `model_attributes_type`. Fixed (`validate::missing_body`, exact-empty).
+  3. Phantom-`[MASK]` choice argmax out of range: Rust indexed a slice → panic
+     → dropped connection, where Python's `options[best_idx]` IndexError is
+     caught → 422 `"list index out of range"`. Now returns the contract error.
+  4. Zero-shot noul with a literal `[MASK]` in the state: py *rebuilds* the
+     logits via `torch.stack([logits[0]-correction, logits[1]])` — phantom
+     positions leave the softmax denominator; rs kept them → wrong noul on
+     every phantom zero-shot case. `logits.truncate(2)`.
+  5. FastAPI content-type semantics: only an absent header,
+     `application/json`, or `application/*+json` goes to `request.json()`;
+     anything else hands the **raw body bytes** to pydantic → 422
+     `model_attributes_type` with `input` = raw body text. Implemented
+     (`content_type_is_json`, `model_attributes_type_body`).
+  6. `', '.join` semantics in score descriptions: falsy examples
+     (`0`/`0.0`/`False`/`{}`/`[]`/`None`/`""`) render as `""` (no error); a
+     truthy non-iterable raises `"can only join an iterable"` (rs said
+     `"'int' object is not iterable"`); a truthy dict joins its **keys**.
+  7. pydantic `input_value` truncation is **byte-based**
+     (pydantic-core `write_truncated_to_limited_bytes`: repr > 50 bytes →
+     `floor_char_boundary(25)` + `...` + `ceil_char_boundary(len−24)`).
+     Stage 1's char-based reading only agreed on ASCII; non-ASCII reprs
+     truncated to the wrong tail (supersedes the Stage 1 finding, corrected
+     there).
+- **CLI `--device` surface**: full `auto|cuda|rocm|hip|mps|dml|directml|cpu`
+  accepted on all commands (mirrors `device.py`); `auto|cpu` execute, the
+  accelerator aliases fail cleanly with a Stage-4 pointer, garbage mirrors
+  torch's invalid-device rejection.
+- **TS SDK** (`js/tests/live.test.ts`, new): live wire-contract tests gated on
+  `VON_LIVE_URL`/`VON_LIVE_KEY` (plain `bun test` stays green standalone).
+  17/17 against the Rust server and 17/17 against the Python oracle — health,
+  models, choice/noul/score round-trips, old-model-id stamping, structured
+  state, 401 contract, malformed-JSON `json_invalid` 422, unknown-type VonError,
+  decide helper. (bun installed user-locally; mock suite still green.)
+- **jabr v1 accuracy fingerprint over HTTP** (`run_marker_benchmark.py
+  --base-url`, new `HttpBackend` adapter — the benchmark stays the independent
+  observer, just pointed at an endpoint): Rust server micro **0.936** /
+  macro **0.927** = the Stage 0 Python baseline exactly (**±0.0pp on every
+  task**, no task drop); Python-over-HTTP cross-check identical. Results in
+  `benchmarks/results/stage3-rust-fingerprint.json` +
+  `stage3-python-http-fingerprint.json`.
+- **pytest**: 42/42 against the Rust server (`VON_TEST_BASE_URL`) and 42/42
+  in-process (with the pin exported). Rust: clippy 0 warnings, fmt clean, all
+  crate tests green after the changes.
+- **Fuzz results so far**: the first 500-case batch surfaced all of the above
+  (24 divergences at first run → root-caused into 7 fix classes → 0 divergent,
+  4 within-envelope, 496/500 byte-identical on re-run). The full corpus+fuzz
+  gate run (10k cases, seed 20260924) is in flight as this entry is written —
+  corpus legs already green in every run of the day (51 exact + 2 known-ulp
+  live; rs-vs-golden 51+2; py-vs-golden 53 exact).
+- Machine note: two unrelated heavy GPU/CPU jobs ran concurrently with this
+  stage; all Stage 3 gates are correctness-only and every timing number
+  observed this stage (including CPU forward latency) is discarded as noise.
+  Stage 4 timing runs get exclusive hardware per §7.1.5.

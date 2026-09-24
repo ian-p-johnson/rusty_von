@@ -12,8 +12,12 @@ PORT="${1:-8001}"
 URL="http://127.0.0.1:${PORT}"
 cd "$(dirname "$0")/.."
 
-echo "== starting reference server on ${URL} (cpu, auth keyed) =="
-VON_DEVICE=cpu VON_API_KEY=golden-test-key \
+# Pin the oracle to the golden-capture checkpoint: upstream `main` may move,
+# the goldens may not (VON_HF_REVISION is honored by von's Hub loads).
+REVISION="${VON_HF_REVISION:-$(python3 -c "import json;print(json.load(open('goldens/manifest.json'))['checkpoint_revision'])")}"
+
+echo "== starting reference server on ${URL} (cpu, auth keyed, rev ${REVISION:0:12}) =="
+VON_DEVICE=cpu VON_API_KEY=golden-test-key VON_HF_REVISION="$REVISION" \
     uv run uvicorn von.server:app --host 127.0.0.1 --port "$PORT" \
     > /tmp/von_oracle_server.log 2>&1 &
 SERVER_PID=$!

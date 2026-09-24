@@ -200,8 +200,15 @@ impl QuestionBackend for OrtEngine {
         for (opt, p) in options.iter().zip(&probs) {
             probabilities.insert((*opt).clone(), round_half_even(*p, 4));
         }
+        // A literal "[MASK]" in the packed text creates phantom option
+        // positions; if the argmax lands on one, Python's `options[best_idx]`
+        // raises IndexError and the server maps str(exc) to a 422 detail.
+        // Reproduce that contract instead of panicking on the slice index.
+        let choice = options
+            .get(best_idx)
+            .ok_or_else(|| EngineError("list index out of range".to_string()))?;
         Ok(Answer::Choice {
-            choice: options[best_idx].clone(),
+            choice: (*choice).clone(),
             probabilities,
             confidence: top_gap_confidence(&probs),
         })
@@ -240,6 +247,10 @@ impl QuestionBackend for OrtEngine {
                 None => 0.7f32 * bias,
             };
             logits[0] = f64::from(logits[0] as f32 - correction);
+            // py: `logits = torch.stack([logits[0] - correction, logits[1]])`
+            // rebuilds the tensor with exactly two entries, dropping phantom
+            // "[MASK]" positions from the softmax denominator.
+            logits.truncate(2);
         }
 
         let eff_temp = self.effective_temperature(&logits, state_text, 2, None);

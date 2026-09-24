@@ -20,9 +20,12 @@ pub use temperature::{Calibration, NoulPrior};
 
 /// Locate the pinned HF snapshot directory (config/tokenizer/calibration files).
 ///
-/// Resolution order: `$VON_SNAPSHOT_DIR`, else the newest snapshot under the
-/// standard HF cache for repo `wfzyx/von` (the cache is content-addressed and
-/// shared with the Python oracle by design — PORTING_RUST.md §7.1).
+/// Resolution order: `$VON_SNAPSHOT_DIR`, else `$VON_HF_REVISION` resolved
+/// inside the standard HF cache (the same pin the Python oracle honors — one
+/// env var pins both sides of the differential harness), else the
+/// lexicographically newest snapshot under the cache for repo `wfzyx/von`
+/// (the cache is content-addressed and shared with the Python oracle by
+/// design — PORTING_RUST.md §7.1).
 pub fn snapshot_dir() -> Result<PathBuf, EngineError> {
     if let Ok(dir) = std::env::var("VON_SNAPSHOT_DIR") {
         let p = PathBuf::from(dir);
@@ -38,6 +41,19 @@ pub fn snapshot_dir() -> Result<PathBuf, EngineError> {
     let home = std::env::var("HOME")
         .map_err(|_| EngineError("cannot resolve home directory".to_string()))?;
     let snapshots = Path::new(&home).join(".cache/huggingface/hub/models--wfzyx--von/snapshots");
+    if let Ok(rev) = std::env::var("VON_HF_REVISION")
+        && !rev.is_empty()
+    {
+        let p = snapshots.join(&rev);
+        return if p.is_dir() {
+            Ok(p)
+        } else {
+            Err(EngineError(format!(
+                "VON_HF_REVISION {rev} has no snapshot under {}",
+                snapshots.display()
+            )))
+        };
+    }
     let mut entries: Vec<PathBuf> = std::fs::read_dir(&snapshots)
         .map_err(|e| EngineError(format!("HF cache missing ({}): {e}", snapshots.display())))?
         .filter_map(|e| e.ok().map(|e| e.path()))

@@ -143,14 +143,45 @@ pub fn repr_f64(x: f64) -> String {
     out
 }
 
+/// pydantic-core `write_truncated_to_limited_bytes` (tools.rs): the repr is
+/// truncated by BYTE length, not chars — max 50 bytes, head from byte 0 to
+/// `floor_char_boundary(25)`, tail from `ceil_char_boundary(len - 24)` to the
+/// end, joined with "...".
 pub fn truncate_repr(s: &str) -> String {
-    if s.chars().count() <= 51 {
+    const MAX_LEN: usize = 50;
+    if s.len() <= MAX_LEN {
         return s.to_string();
     }
-    let head: String = s.chars().take(25).collect();
-    let total = s.chars().count();
-    let tail: String = s.chars().skip(total - 24).collect();
-    format!("{head}...{tail}")
+    let mid_point = MAX_LEN.div_ceil(2); // 25
+    format!(
+        "{}...{}",
+        &s[..floor_char_boundary(s, mid_point)],
+        &s[ceil_char_boundary(s, s.len() - (mid_point - 1))..]
+    )
+}
+
+fn is_utf8_char_boundary(b: u8) -> bool {
+    // Bit magic equivalent to: b < 128 || b >= 192
+    (b as i8) >= -0x40
+}
+
+fn floor_char_boundary(s: &str, index: usize) -> usize {
+    if index >= s.len() {
+        return s.len();
+    }
+    let lower_bound = index.saturating_sub(3);
+    let new_index = s.as_bytes()[lower_bound..=index]
+        .iter()
+        .rposition(|b| is_utf8_char_boundary(*b));
+    lower_bound + new_index.unwrap()
+}
+
+fn ceil_char_boundary(s: &str, index: usize) -> usize {
+    let upper_bound = Ord::min(index + 4, s.len());
+    s.as_bytes()[index..upper_bound]
+        .iter()
+        .position(|b| is_utf8_char_boundary(*b))
+        .map_or(upper_bound, |pos| pos + index)
 }
 
 #[cfg(test)]

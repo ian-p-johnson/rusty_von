@@ -89,11 +89,18 @@ enum Commands {
     },
 }
 
+/// Full device surface mirroring `von device.py`: auto|cpu execute today;
+/// accelerator aliases are recognized but gate on the Stage 4 ORT execution
+/// providers; anything else mirrors torch's invalid-device rejection.
 fn check_device(device: &str) -> Result<(), String> {
-    match device {
-        "auto" | "cpu" => Ok(()),
+    let lowered = device.to_ascii_lowercase();
+    match lowered.as_str() {
+        "" | "auto" | "cpu" => Ok(()),
+        "cuda" | "rocm" | "hip" | "mps" | "dml" | "directml" => Err(format!(
+            "Error: device '{device}' is not available in the Rust runtime yet (ORT execution providers land in Stage 4; supported now: auto, cpu)."
+        )),
         other => Err(format!(
-            "Error: device '{other}' is not available in the Stage 1 Rust runtime (supported: auto, cpu)."
+            "Error: device '{other}' is not a valid device (expected one of: auto, cpu, cuda, rocm, hip, mps, dml, directml)."
         )),
     }
 }

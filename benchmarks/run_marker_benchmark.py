@@ -5,11 +5,60 @@ import json
 import sys
 import time
 from pathlib import Path
+from types import SimpleNamespace
+
+import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from benchmarks.jabr_cases import ALL_TASK_FUNCTIONS  # noqa: E402
 from von.backends.option_marker_backend import OptionMarkerBackend  # noqa: E402
+
+
+class HttpBackend:
+    """Same evaluate_* surface as OptionMarkerBackend, served by a remote von
+    server over /v1/systemone.
+
+    This is the PORTING_RUST.md Stage 3 accuracy-fingerprint adapter: the
+    unmodified jabr suite scores any contract-conformant endpoint, so the Rust
+    runtime can be fingerprinted against the Python baseline without porting
+    the benchmark itself (the benchmark must stay the independent observer).
+    """
+
+    def __init__(self, base_url: str, api_key: str = None):
+        self.base_url = base_url.rstrip("/")
+        self.api_key = api_key
+        self.device = "remote"  # fills the JSON record's device field
+        self._client = httpx.Client(timeout=300.0)
+
+    def _evaluate(self, q_id, state, question):
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        payload = {
+            "model": "von-latest",
+            "state": state,
+            "questions": {
+                q_id: question if isinstance(question, dict) else question.model_dump()
+            },
+        }
+        resp = self._client.post(
+            f"{self.base_url}/v1/systemone", json=payload, headers=headers
+        )
+        resp.raise_for_status()
+        return resp.json()["answers"][q_id]
+
+    def evaluate_choice(self, q_id, state, question):
+        return SimpleNamespace(choice=self._evaluate(q_id, state, question)["choice"])
+
+    def evaluate_noul(self, q_id, state, question):
+        return SimpleNamespace(noul=self._evaluate(q_id, state, question)["noul"])
+
+    def evaluate_score(self, q_id, state, question):
+        return SimpleNamespace(
+            probabilities=self._evaluate(q_id, state, question)["probabilities"]
+        )
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -32,14 +81,30 @@ def main():
         help="Write the results as structured JSON to this path "
              "(used by the Rust-port baseline, PORTING_RUST.md Stage 0).",
     )
+    parser.add_argument(
+        "--base-url",
+        default=None,
+        help="Score a running von server over HTTP instead of loading the "
+             "backend in-process (Stage 3 fingerprint mode).",
+    )
+    parser.add_argument(
+        "--api-key",
+        default=None,
+        help="Bearer key for --base-url mode (default: $VON_API_KEY).",
+    )
     args = parser.parse_args()
+
+    if args.base_url:
+        backend = HttpBackend(args.base_url, api_key=args.api_key)
+        backend_label = f"HTTP {backend.base_url}"
+    else:
+        backend = OptionMarkerBackend(checkpoint_dir=args.checkpoint_dir, device=args.device)
+        backend_label = args.checkpoint_dir
 
     print("=" * 65)
     print("Phase 3 Option-Marker Peer Benchmark (jabr/classifier-benchmark)")
-    print(f"Checkpoint: {args.checkpoint_dir}")
+    print(f"Backend: {backend_label}")
     print("=" * 65)
-
-    backend = OptionMarkerBackend(checkpoint_dir=args.checkpoint_dir, device=args.device)
 
     t0_suite = time.perf_counter()
     micro_correct, micro_total = 0, 0
@@ -114,6 +179,8 @@ def main():
             },
             "model_id": VON_MODEL_ID,
             "checkpoint_dir": args.checkpoint_dir,
+            "transport": "http" if args.base_url else "in-process",
+            "base_url": args.base_url,
             "device": str(backend.device),
             "suite": "jabr v1 (benchmarks/jabr_cases.py)",
             "micro_accuracy": round(micro_acc, 6),

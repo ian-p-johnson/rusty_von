@@ -7,9 +7,17 @@ bidirectional self-attention, eliminating K separate cross-encoder passes.
 """
 
 from typing import List, Optional, Tuple
+import os
+
 import torch
 import torch.nn as nn
 from transformers import AutoModel, AutoTokenizer
+
+# Verification pin (PORTING_RUST.md): when VON_HF_REVISION is set, Hub loads
+# resolve that snapshot instead of refs/main, so the Python oracle reproduces
+# the golden-capture checkpoint exactly even after the upstream repo moves.
+# Unset means "latest", which stays the default runtime behavior.
+VON_HF_REVISION = os.environ.get("VON_HF_REVISION") or None
 
 
 class OptionMarkerScorer(nn.Module):
@@ -45,12 +53,14 @@ class OptionMarkerModel(nn.Module):
     ):
         super().__init__()
         from transformers import AutoConfig
-        config = AutoConfig.from_pretrained(base_model_id)
+        config = AutoConfig.from_pretrained(base_model_id, revision=VON_HF_REVISION)
         config.max_position_embeddings = max_position_embeddings
-        self.encoder = AutoModel.from_pretrained(base_model_id, config=config)
+        self.encoder = AutoModel.from_pretrained(base_model_id, config=config, revision=VON_HF_REVISION)
         self.hidden_size = self.encoder.config.hidden_size
         self.scorer = OptionMarkerScorer(hidden_size=self.hidden_size, dropout=dropout)
-        self.tokenizer = AutoTokenizer.from_pretrained(base_model_id, model_max_length=max_position_embeddings)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            base_model_id, model_max_length=max_position_embeddings, revision=VON_HF_REVISION
+        )
         self.mask_token_id = self.tokenizer.mask_token_id
 
     def forward(

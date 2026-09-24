@@ -26,7 +26,7 @@ from ..types import (
     Usage,
 )
 from .base import BaseBackend
-from ..models.option_marker import OptionMarkerModel
+from ..models.option_marker import OptionMarkerModel, VON_HF_REVISION
 
 
 def _format_state(state: Any) -> str:
@@ -200,13 +200,15 @@ class OptionMarkerBackend(BaseBackend):
                     # Download from Hugging Face Hub
                     try:
                         from huggingface_hub import hf_hub_download
-                        cached_pt = hf_hub_download(repo_id=VON_HF_REPO, filename="option_marker.pt")
+                        cached_pt = hf_hub_download(repo_id=VON_HF_REPO, filename="option_marker.pt",
+                                                    revision=VON_HF_REVISION)
                         model = OptionMarkerModel(base_model_id=VON_HF_REPO)
                         state_dict = torch.load(cached_pt, map_location=self.device, weights_only=True)
                         model.load_state_dict(state_dict, strict=True)
                         loaded_from = f"Hugging Face Hub '{VON_HF_REPO}:option_marker.pt' ({cached_pt})"
                         try:
-                            hub_calib_path = hf_hub_download(repo_id=VON_HF_REPO, filename="marker_calibration.json")
+                            hub_calib_path = hf_hub_download(repo_id=VON_HF_REPO, filename="marker_calibration.json",
+                                                             revision=VON_HF_REVISION)
                         except Exception:
                             hub_calib_path = None
                     except Exception as exc:

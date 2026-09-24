@@ -1,0 +1,84 @@
+{
+  "recorded_with": {
+    "python": "3.12.3",
+    "torch": "2.14.0+cu130",
+    "transformers": "5.17.0",
+    "von": "1.0.1"
+  },
+  "model_id": "von-1.1.0",
+  "checkpoint_dir": "checkpoints/von-option-marker",
+  "transport": "http",
+  "base_url": "http://127.0.0.1:8001",
+  "device": "remote",
+  "suite": "jabr v1 (benchmarks/jabr_cases.py)",
+  "micro_accuracy": 0.935897,
+  "macro_accuracy": 0.926736,
+  "mean_ms_per_case": 323.308,
+  "wall_time_s": 25.22,
+  "per_task": [
+    {
+      "id": "support_department",
+      "type": "choice",
+      "correct": 15,
+      "total": 15,
+      "accuracy": 1.0,
+      "ms_per_case": 506.489
+    },
+    {
+      "id": "email_intent",
+      "type": "choice",
+      "correct": 10,
+      "total": 10,
+      "accuracy": 1.0,
+      "ms_per_case": 476.064
+    },
+    {
+      "id": "refund_eligible",
+      "type": "noul",
+      "correct": 9,
+      "total": 10,
+      "accuracy": 0.9,
+      "ms_per_case": 193.865
+    },
+    {
+      "id": "urgency",
+      "type": "noul",
+      "correct": 5,
+      "total": 8,
+      "accuracy": 0.625,
+      "ms_per_case": 156.044
+    },
+    {
+      "id": "secret_leak",
+      "type": "noul",
+      "correct": 8,
+      "total": 8,
+      "accuracy": 1.0,
+      "ms_per_case": 355.966
+    },
+    {
+      "id": "frustration_level",
+      "type": "score",
+      "correct": 9,
+      "total": 9,
+      "accuracy": 1.0,
+      "ms_per_case": 107.891
+    },
+    {
+      "id": "incident_severity",
+      "type": "score",
+      "correct": 9,
+      "total": 9,
+      "accuracy": 1.0,
+      "ms_per_case": 137.739
+    },
+    {
+      "id": "review_sentiment",
+      "type": "score",
+      "correct": 8,
+      "total": 9,
+      "accuracy": 0.888889,
+      "ms_per_case": 512.696
+    }
+  ]
+}

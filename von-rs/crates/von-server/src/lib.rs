@@ -162,11 +162,12 @@ fn check_auth(headers: &HeaderMap) -> Option<Response> {
 }
 
 async fn system_one_handler(State(engine): State<Arc<dyn Engine>>, request: Request) -> Response {
-    let auth_failure = check_auth(request.headers());
-    if let Some(resp) = auth_failure {
-        return resp;
-    }
-    let body = match axum::body::to_bytes(request.into_body(), 64 * 1024 * 1024).await {
+    // Ordering mirrors FastAPI: the request body is parsed and validated by
+    // the framework before the endpoint function (where the auth check lives
+    // in von's Python server) ever runs, so a malformed/invalid body yields
+    // 422 even when the request would also fail auth. Auth second, then eval.
+    let (parts, body) = request.into_parts();
+    let body = match axum::body::to_bytes(body, 64 * 1024 * 1024).await {
         Ok(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
         Err(_) => {
             return detail_response(
@@ -178,11 +179,33 @@ async fn system_one_handler(State(engine): State<Arc<dyn Engine>>, request: Requ
             );
         }
     };
-    match validate::validate_body(&body) {
+    // FastAPI checks a missing body before any content-type dispatch: an
+    // empty body is "Field required" regardless of headers.
+    if body.is_empty() {
+        return detail_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            validate::missing_body(),
+        );
+    }
+    if !validate::content_type_is_json(
+        parts.headers.get(header::CONTENT_TYPE).and_then(|v| v.to_str().ok()),
+    ) {
+        // Non-JSON content types bypass request.json() entirely: the raw
+        // body reaches pydantic as bytes and fails the model check.
+        return detail_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            validate::model_attributes_type_body(&body),
+        );
+    }
+    let parsed = validate::validate_body(&body);
+    match parsed {
         validate::ParsedRequest::Err(detail) => {
             detail_response(StatusCode::UNPROCESSABLE_ENTITY, detail)
         }
         validate::ParsedRequest::Ok(req) => {
+            if let Some(resp) = check_auth(&parts.headers) {
+                return resp;
+            }
             match engine.evaluate(
                 &req.state,
                 &req.questions,
