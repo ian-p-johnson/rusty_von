@@ -812,10 +812,15 @@ stays (help text is not contract; the `--model` choice set is).
   fix classes → 0 divergent / 4 within-envelope / 496 byte-identical on
   re-run. Tail scan of cases 500–2500 → 5 divergences, 2 further fix classes
   (above) → 0 divergent; all 25 known-failing cases re-verified SAME against
-  the fixed binary; pytest 42/42 and TS SDK 17/17 re-confirmed on it. The
-  full corpus+10k gate run (seed 20260924) relaunches on this tree; corpus
-  legs green in every run of the day (live 51 exact + 2 known-ulp;
-  rs-vs-golden 51+2; py-vs-golden 53 exact).
+  the fixed binary; pytest 42/42 and TS SDK 17/17 re-confirmed on it.
+- **Stage 3 gate: GREEN** (full corpus+10k sweep on the final tree, seed
+  20260924): 10,053 cases — **9,992 byte-identical (99.39%), 61 within the
+  per-field rounding envelope (0.6%), 0 divergent**. Corpus legs: live
+  py-vs-rs 51 exact + 2 known-ulp, rs-vs-golden 51 + 2, py-vs-golden 53/53
+  exact. The 61 envelope cases are the accepted Stage 2 ORT↔torch logit band
+  straddling a field's rounding boundary — argmax agreement is 100%
+  (no answer ever changed), only last-digit confidence/probability digits
+  move.
 - Machine note: two unrelated heavy GPU/CPU jobs ran concurrently with this
   stage; all Stage 3 gates are correctness-only and every timing number
   observed this stage (including CPU forward latency) is discarded as noise.
