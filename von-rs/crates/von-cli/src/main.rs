@@ -89,20 +89,54 @@ enum Commands {
     },
 }
 
-/// Full device surface mirroring `von device.py`: auto|cpu execute today;
-/// accelerator aliases are recognized but gate on the Stage 4 ORT execution
-/// providers; anything else mirrors torch's invalid-device rejection.
-fn check_device(device: &str) -> Result<(), String> {
+/// Stage 4 device surface: `auto` resolves to CUDA when the onnxruntime-gpu
+/// dylib is available (falling back to CPU with a note, like `device.py`'s
+/// auto path), `cuda|rocm|hip` all execute on the CUDA execution provider
+/// (device.py maps rocm/hip the same way), and `mps|dml|directml` stay
+/// rejected — those EPs are platform-specific (macOS/Windows) and not wired.
+fn resolve_device(device: &str) -> Result<von_backend_ort::Device, String> {
     let lowered = device.to_ascii_lowercase();
     match lowered.as_str() {
-        "" | "auto" | "cpu" => Ok(()),
-        "cuda" | "rocm" | "hip" | "mps" | "dml" | "directml" => Err(format!(
-            "Error: device '{device}' is not available in the Rust runtime yet (ORT execution providers land in Stage 4; supported now: auto, cpu)."
-        )),
+        "" | "auto" => {
+            if find_gpu_dylib_available() {
+                Ok(von_backend_ort::Device::Cuda { device_id: 0 })
+            } else {
+                Ok(von_backend_ort::Device::Cpu)
+            }
+        }
+        "cpu" => Ok(von_backend_ort::Device::Cpu),
+        "cuda" | "rocm" | "hip" => Ok(von_backend_ort::Device::Cuda { device_id: 0 }),
+        "mps" => Err(
+            "Error: device 'mps' is not available in the Rust runtime (no MPS execution provider; supported: auto, cpu, cuda, rocm, hip)."
+                .to_string(),
+        ),
+        "dml" | "directml" => Err(
+            "Error: device 'dml' is not available in the Rust runtime (DirectML is Windows-only; supported: auto, cpu, cuda, rocm, hip)."
+                .to_string(),
+        ),
         other => Err(format!(
             "Error: device '{other}' is not a valid device (expected one of: auto, cpu, cuda, rocm, hip, mps, dml, directml)."
         )),
     }
+}
+
+fn find_gpu_dylib_available() -> bool {
+    // Cheap existence probe without initializing the runtime: mirror the
+    // engine's resolution order (env var, then the vendored ort-gpu tree).
+    if let Ok(p) = std::env::var("VON_ORT_GPU_DYLIB")
+        && !p.is_empty()
+    {
+        return std::path::Path::new(&p).is_file();
+    }
+    let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mut base = manifest;
+    for _ in 0..3 {
+        if base.join("third_party/ort-gpu").is_dir() {
+            return true;
+        }
+        base = base.parent().unwrap_or(base);
+    }
+    false
 }
 
 fn resolve_base_url(explicit: Option<&str>) -> Option<String> {
@@ -150,6 +184,7 @@ fn run_system_one(
     state: serde_json::Value,
     questions: indexmap::IndexMap<String, serde_json::Value>,
     model: &str,
+    device: von_backend_ort::Device,
 ) -> serde_json::Value {
     let payload = serde_json::json!({
         "model": model,
@@ -159,7 +194,7 @@ fn run_system_one(
     if let Some(url) = base_url {
         return remote_system_one(&url, &payload);
     }
-    let engine = build_engine();
+    let engine = build_engine(device);
     let questions_map: indexmap::IndexMap<String, serde_json::Value> = payload["questions"]
         .as_object()
         .expect("questions object")
@@ -185,19 +220,23 @@ fn main() {
             if reload {
                 exit_err("Error: --reload is not supported by the Rust server.");
             }
-            if let Err(e) = check_device(&device) {
-                exit_err(&e);
-            }
+            let resolved = resolve_device(&device).unwrap_or_else(|e| exit_err(&e));
             println!(
-                "Starting Von Decision Server [{} on CPU] on http://{}:{}",
-                model, host, port
+                "Starting Von Decision Server [{} on {}] on http://{}:{}",
+                model,
+                match resolved {
+                    von_backend_ort::Device::Cuda { .. } => "CUDA",
+                    von_backend_ort::Device::Cpu => "CPU",
+                },
+                host,
+                port
             );
             let runtime = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()
                 .expect("tokio runtime");
             runtime.block_on(async move {
-                let router = von_server::build_engine_router(build_engine());
+                let router = von_server::build_engine_router(build_engine(resolved));
                 let listener = tokio::net::TcpListener::bind((host.as_str(), port))
                     .await
                     .unwrap_or_else(|e| {
@@ -215,9 +254,7 @@ fn main() {
             device,
             base_url,
         } => {
-            if let Err(e) = check_device(&device) {
-                exit_err(&e);
-            }
+            let resolved = resolve_device(&device).unwrap_or_else(|e| exit_err(&e));
             let opts: Vec<String> = choices
                 .split(',')
                 .map(|c| c.trim().to_string())
@@ -251,6 +288,7 @@ fn main() {
                 serde_json::json!(text),
                 questions,
                 "von-latest",
+                resolved,
             );
             let out = serde_json::json!({
                 "choice": answer["answers"]["decision"]["choice"],
@@ -258,6 +296,12 @@ fn main() {
                 "probabilities": answer["answers"]["decision"]["probabilities"],
             });
             println!("{}", to_python_json_indent(&out, 2));
+            if std::env::var("VON_TRACE").ok().as_deref() == Some("1") {
+                use std::io::Write;
+                eprintln!("[trace] decide printed; flushing stdout");
+                std::io::stdout().flush().ok();
+                eprintln!("[trace] stdout flushed; exiting");
+            }
         }
         Commands::Judge {
             text,
@@ -267,9 +311,7 @@ fn main() {
             device,
             base_url,
         } => {
-            if let Err(e) = check_device(&device) {
-                exit_err(&e);
-            }
+            let resolved = resolve_device(&device).unwrap_or_else(|e| exit_err(&e));
             let mut criteria = indexmap::IndexMap::new();
             if !pos.is_empty() {
                 criteria.insert("true".to_string(), serde_json::json!(pos));
@@ -291,6 +333,7 @@ fn main() {
                 serde_json::json!(text),
                 questions,
                 "von-latest",
+                resolved,
             );
             let out = serde_json::json!({
                 "type": "noul",
@@ -306,9 +349,7 @@ fn main() {
             device,
             base_url,
         } => {
-            if let Err(e) = check_device(&device) {
-                exit_err(&e);
-            }
+            let resolved = resolve_device(&device).unwrap_or_else(|e| exit_err(&e));
             let lvl_list: Vec<serde_json::Value> = levels
                 .split(',')
                 .map(|l| serde_json::json!(l.trim()))
@@ -327,6 +368,7 @@ fn main() {
                 serde_json::json!(text),
                 questions,
                 "von-latest",
+                resolved,
             );
             let decision = &answer["answers"]["rating"];
             let out = serde_json::json!({
@@ -371,7 +413,13 @@ fn main() {
                 .iter()
                 .map(|(k, v)| (k.clone(), v.clone()))
                 .collect();
-            let resp = run_system_one(resolve_base_url(base_url.as_deref()), state, q_map, &model);
+            let resp = run_system_one(
+                resolve_base_url(base_url.as_deref()),
+                state,
+                q_map,
+                &model,
+                resolve_device("auto").unwrap_or(von_backend_ort::Device::Cpu),
+            );
             println!("{}", to_python_json_indent(&resp, 2));
         }
     }
@@ -380,7 +428,9 @@ fn main() {
 /// Engine resolution for CLI commands and `serve`: the real ONNX backend
 /// when the exported artifact is present (`VON_ONNX` or the repo-relative
 /// default), else the Stage 1 stub so the CLI stays usable without weights.
-fn build_engine() -> std::sync::Arc<dyn Engine> {
+/// A Cuda request is strict: a failed load exits — never silently serve stub
+/// numbers from the wrong device.
+fn build_engine(device: von_backend_ort::Device) -> std::sync::Arc<dyn Engine> {
     let candidates: Vec<PathBuf> = match std::env::var("VON_ONNX") {
         Ok(p) if !p.is_empty() => vec![PathBuf::from(p)],
         _ => vec![
@@ -390,9 +440,10 @@ fn build_engine() -> std::sync::Arc<dyn Engine> {
     };
     for path in candidates {
         if path.is_file() {
-            match von_backend_ort::OrtEngine::from_artifacts(
+            match von_backend_ort::OrtEngine::from_artifacts_with_device(
                 &path,
                 &von_backend_ort::snapshot_dir().expect("HF snapshot resolution"),
+                device,
             ) {
                 Ok(engine) => {
                     eprintln!(
@@ -404,6 +455,9 @@ fn build_engine() -> std::sync::Arc<dyn Engine> {
                     return std::sync::Arc::new(engine);
                 }
                 Err(e) => {
+                    if matches!(device, von_backend_ort::Device::Cuda { .. }) {
+                        exit_err(&format!("Error: CUDA engine load failed: {e}"));
+                    }
                     eprintln!(
                         "[von] warning: ONNX backend failed to load ({e}); using stub engine"
                     );
@@ -411,6 +465,9 @@ fn build_engine() -> std::sync::Arc<dyn Engine> {
                 }
             }
         }
+    }
+    if matches!(device, von_backend_ort::Device::Cuda { .. }) {
+        exit_err("Error: CUDA requested but no ONNX artifact was found");
     }
     eprintln!("[von] warning: no ONNX artifact found (set VON_ONNX); using stub engine");
     std::sync::Arc::new(StubEngine)

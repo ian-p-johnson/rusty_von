@@ -825,3 +825,70 @@ stays (help text is not contract; the `--model` choice set is).
   stage; all Stage 3 gates are correctness-only and every timing number
   observed this stage (including CPU forward latency) is discarded as noise.
   Stage 4 timing runs get exclusive hardware per §7.1.5.
+
+### Stage 4 — performance, devices, hardening (2026-09-25)
+
+The user's heavy jobs had finished by this stage, so the GPU gates and all
+timing runs executed on an otherwise-idle machine (§7.1.5 satisfied).
+
+- **M1 concurrency**: the `Mutex<Session>` is gone; sessions live in a pool
+  (`VON_SESSION_POOL`, default 1 = the sequential, parity-proven semantics;
+  ort's `run(&mut self)` is kept exclusively checked out per request).
+  Gate: fuzz-500 CPU identical to pre-change (496 byte-equal / 4 in-envelope /
+  0 divergent), pytest 42/42, corpus replay 51 exact + the 2 known-ulp.
+- **M2 device support**: `Device` (Cpu / Cuda{device_id}) through
+  `OrtEngine::from_artifacts_with_device`; CUDA EP via `ort/load-dynamic`
+  pointed at the **vendored official onnxruntime-gpu 1.30.0 wheel**
+  (`von-rs/scripts/fetch_ort_gpu.sh`, `third_party/` gitignored — the oracle
+  venv is never mutated, per the pinning discipline). CLI mapping:
+  `auto` → CUDA when the GPU dylib is present, else CPU; `cuda|rocm|hip`
+  execute (device.py maps rocm/hip the same way); `mps|dml` rejected
+  (platform EPs, not wired); explicit requests fail hard — no silent CPU
+  fallback for a requested device.
+- **CUDA bring-up findings** (each cost a debugging round; recorded so Stage 5
+  never pays again):
+  1. `dlopen`-preloading the provider libraries before the main ORT library
+     segfaults in their ELF initializers — removed; ORT resolves providers
+     relative to its own dylib (LD_LIBRARY_PATH=capi stays the manual recipe).
+  2. A bare `cuInit` driver probe before ORT's own init **deadlocked the first
+     CUDA run** (futex stall, VRAM allocated, GPU idle). Replaced with a
+     `libcuda`-free check (`/proc/driver/nvidia/gpus`, `nvidia-smi -L` probe).
+     cuInit is never called outside ORT now.
+  3. `disable_cpu_ep_fallback` is unusable on real graphs: ORT deliberately
+     assigns shape ops to the CPU EP even in healthy CUDA sessions, and the
+     flag turns that into a commit failure (the Python session commits the
+     same placement with only a warning).
+  4. The session-pool checkout guard was held through check-in — a
+     self-deadlock on the non-reentrant mutex (CPU included). Found via
+     `VON_TRACE` markers. The first "gate" after the pool change had silently
+     run against a stale server binary; everything was re-run on the real one.
+  5. The diff harness now boots the Rust server with `--device cpu`
+     explicitly: goldens are a CPU fp32 reference, and after M2 `auto`
+     resolves to CUDA (a CPU-vs-CUDA fuzz comparison diverges by design —
+     observed as 19 "divergences" in 100 before the pin).
+  6. 12GB VRAM co-residency: two CUDA servers plus a 6k-token request cannot
+     fit (one attention buffer alone is ~2.3GB). Solo, the Rust CUDA server
+     handles the full 6k class (noul 0.4225 vs CPU 0.4223 — in-envelope).
+     Arena set to `SameAsRequested`. Production posture: one server per GPU.
+- **M3 per-device parity GREEN** (`scripts/parity_devices.py`,
+  GPU-Rust vs GPU-Python on the same device, jabr v1 78 cases):
+  argmax agreement **1.0000** (gate ≥ 0.995), probability MAE **1.55e-4**
+  (gate ≤ 5e-3), max 0.001. `benchmarks/results/stage4-cuda-parity.json`.
+- **M4 latency** (`scripts/latency_probe.py`, exclusive RTX 5070 Ti Laptop,
+  fp32, HTTP-served, n=60/size, p50):
+  | class | Rust ORT-CUDA | Python torch-CUDA |
+  |---|---|---|
+  | small (~10 tok) | **6.72 ms** | 13.68 ms |
+  | medium (~1.5k chars) | **18.63 ms** | 30.26 ms |
+  | large (7506 tok) | 3342.64 ms | **1502.73 ms** |
+  Honest split, exactly the §7 warning: Rust wins the served small/medium
+  classes (2.0×/1.6×), Python wins long-context (2.2×) — torch's fused
+  attention vs ORT's explicit MatMul+Softmax path. JSON records:
+  `benchmarks/results/stage4-latency-{rust,python}-cuda.json`.
+- **M5 soak + memory**: 60 mixed requests, ~7 min: VRAM flat **2070 MiB**
+  (zero leak), RSS ~1.97 GB (peak 2.05 GB, weights included), server healthy
+  throughout. No Python/torch runtime: the whole serving footprint is one
+  static binary + the ONNX artifact.
+- Debug/tuning knobs kept deliberately: `VON_TRACE=1` (forward-path markers),
+  `VON_ORT_INTRA_THREADS`, `VON_ORT_NO_SPIN`; `examples/cuda_spike.rs` is the
+  minimal CUDA bisection tool.

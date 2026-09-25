@@ -14,7 +14,7 @@ use tokenizers::Tokenizer;
 use von_core::EngineError;
 
 pub use engine::OrtEngine;
-pub use session::VonSession;
+pub use session::{Device, VonSession};
 pub use special::{SpecialIds, VON_SPECIAL};
 pub use temperature::{Calibration, NoulPrior};
 

@@ -182,13 +182,13 @@ async fn system_one_handler(State(engine): State<Arc<dyn Engine>>, request: Requ
     // FastAPI checks a missing body before any content-type dispatch: an
     // empty body is "Field required" regardless of headers.
     if body.is_empty() {
-        return detail_response(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            validate::missing_body(),
-        );
+        return detail_response(StatusCode::UNPROCESSABLE_ENTITY, validate::missing_body());
     }
     if !validate::content_type_is_json(
-        parts.headers.get(header::CONTENT_TYPE).and_then(|v| v.to_str().ok()),
+        parts
+            .headers
+            .get(header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok()),
     ) {
         // Non-JSON content types bypass request.json() entirely: the raw
         // body reaches pydantic as bytes and fails the model check.

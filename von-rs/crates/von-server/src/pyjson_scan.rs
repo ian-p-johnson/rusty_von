@@ -326,8 +326,16 @@ mod tests {
             (r#"{"a": 1"#, "Expecting ',' delimiter", 7),
             ("[1", "Expecting ',' delimiter", 2),
             (r#"{"a": 1, "b""#, "Expecting ':' delimiter", 12),
-            ("{1: 2}", "Expecting property name enclosed in double quotes", 1),
-            (r#"{"a": 1,}"#, "Expecting property name enclosed in double quotes", 8),
+            (
+                "{1: 2}",
+                "Expecting property name enclosed in double quotes",
+                1,
+            ),
+            (
+                r#"{"a": 1,}"#,
+                "Expecting property name enclosed in double quotes",
+                8,
+            ),
             ("[1,]", "Expecting value", 3),
             (r#"{"a" 1}"#, "Expecting ':' delimiter", 5),
             ("[1 2]", "Expecting ',' delimiter", 3),

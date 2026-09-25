@@ -37,3 +37,6 @@ SCRATCH*.md
 DRAFT*.md
 private/
 .private/
+
+# vendored onnxruntime-gpu wheel (fetch_ort_gpu.sh)
+von-rs/third_party/

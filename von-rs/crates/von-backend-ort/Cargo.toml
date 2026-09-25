@@ -12,12 +12,13 @@ ort = { workspace = true }
 tokenizers = { workspace = true }
 serde_json = { workspace = true }
 indexmap = { workspace = true }
+libc = "0.2"
 
 [dev-dependencies]
 sha2 = "0.10"
 
 [features]
-default = ["load-dynamic"]
+default = ["load-dynamic", "cuda"]
 # CPU + CUDA both run through an onnxruntime shared library given by
 # ORT_DYLIB_PATH instead of ort-sys's downloaded prebuilt binaries:
 #

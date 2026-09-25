@@ -2216,6 +2216,7 @@ name = "von-backend-ort"
 version = "0.1.0"
 dependencies = [
  "indexmap",
+ "libc",
  "ort",
  "serde_json",
  "sha2",

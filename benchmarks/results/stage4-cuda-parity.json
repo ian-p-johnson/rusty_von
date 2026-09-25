@@ -1,0 +1,56 @@
+{
+  "agreement": 1.0,
+  "mae": 0.0001551282051282084,
+  "max_error": 0.0010000000000000009,
+  "cases": 78,
+  "per_task": [
+    {
+      "id": "support_department",
+      "type": "choice",
+      "total": 15,
+      "agree": 15
+    },
+    {
+      "id": "email_intent",
+      "type": "choice",
+      "total": 10,
+      "agree": 10
+    },
+    {
+      "id": "refund_eligible",
+      "type": "noul",
+      "total": 10,
+      "agree": 10
+    },
+    {
+      "id": "urgency",
+      "type": "noul",
+      "total": 8,
+      "agree": 8
+    },
+    {
+      "id": "secret_leak",
+      "type": "noul",
+      "total": 8,
+      "agree": 8
+    },
+    {
+      "id": "frustration_level",
+      "type": "score",
+      "total": 9,
+      "agree": 9
+    },
+    {
+      "id": "incident_severity",
+      "type": "score",
+      "total": 9,
+      "agree": 9
+    },
+    {
+      "id": "review_sentiment",
+      "type": "score",
+      "total": 9,
+      "agree": 9
+    }
+  ]
+}

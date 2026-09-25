@@ -22,6 +22,7 @@ pub struct OrtEngine {
     session: VonSession,
     tokenizer: Tokenizer,
     calib: Calibration,
+    device: crate::session::Device,
     /// Runtime override of the fitted zero-shot noul prior (the goldens'
     /// `prior_*`/`probe_only` rows inject the synthetic prior exactly the way
     /// `capture_golden.py` pokes `backend._noul_prior`).
@@ -30,15 +31,28 @@ pub struct OrtEngine {
 
 impl OrtEngine {
     pub fn from_artifacts(onnx: &Path, snapshot: &Path) -> Result<Self, EngineError> {
-        let session = VonSession::from_file(onnx)?;
+        Self::from_artifacts_with_device(onnx, snapshot, crate::session::Device::Cpu)
+    }
+
+    pub fn from_artifacts_with_device(
+        onnx: &Path,
+        snapshot: &Path,
+        device: crate::session::Device,
+    ) -> Result<Self, EngineError> {
+        let session = VonSession::from_file_with_device(onnx, device)?;
         let tokenizer = load_tokenizer(snapshot)?;
         let calib = Calibration::load(snapshot)?;
         Ok(OrtEngine {
             session,
             tokenizer,
             calib,
+            device,
             noul_prior_override: Mutex::new(None),
         })
+    }
+
+    pub fn device(&self) -> crate::session::Device {
+        self.device
     }
 
     pub fn effective_noul_prior(&self) -> Option<NoulPrior> {

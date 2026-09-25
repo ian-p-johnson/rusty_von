@@ -561,7 +561,8 @@ def boot_servers(args: argparse.Namespace) -> Tuple[str, str, List[subprocess.Po
             print(f"rust server:   booting {RUST_BIN.name} on {rs_url} "
                   f"(auth {'on' if args.auth else 'off'}, rev {revision[:12] or 'latest'})")
             procs.append(subprocess.Popen(
-                [str(RUST_BIN), "serve", "--host", "127.0.0.1", "--port", str(rs_port)],
+                [str(RUST_BIN), "serve", "--host", "127.0.0.1", "--port", str(rs_port),
+                 "--device", "cpu"],
                 cwd=REPO_ROOT, env=env,
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
 
