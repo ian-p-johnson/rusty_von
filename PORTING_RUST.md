@@ -773,6 +773,21 @@ stays (help text is not contract; the `--model` choice set is).
      Stage 1's char-based reading only agreed on ASCII; non-ASCII reprs
      truncated to the wrong tail (supersedes the Stage 1 finding, corrected
      there).
+- **Tail sweep (fuzz cases 500–2500)** — the first full-10k attempt showed the
+  divergence count still growing past case 500; a targeted scan of that range
+  found 5 divergences, **all** in two further classes, both fixed and
+  re-verified SAME along with the original 20:
+  8. `pyjson_scan` EOF messages: CPython emits `Expecting ':' delimiter` /
+     `Expecting property name enclosed in double quotes` at structural EOF
+     positions where the port said `Expecting value`; unterminated strings
+     error at the OPENING-quote offset (pins added for all ten shapes,
+     interpreter-verified).
+  9. Content-type: this FastAPI defaults `strict_content_type=True` — an
+     ABSENT header also takes the raw-bytes-to-pydantic path
+     (`model_attributes_type`), only `application/json`/`*+json` present
+     headers reach `request.json()` (verified against the installed
+     `fastapi/routing.py`; the earlier "absent → json" reading was wrong and
+     is corrected here).
 - **CLI `--device` surface**: full `auto|cuda|rocm|hip|mps|dml|directml|cpu`
   accepted on all commands (mirrors `device.py`); `auto|cpu` execute, the
   accelerator aliases fail cleanly with a Stage-4 pointer, garbage mirrors
@@ -793,12 +808,14 @@ stays (help text is not contract; the `--model` choice set is).
 - **pytest**: 42/42 against the Rust server (`VON_TEST_BASE_URL`) and 42/42
   in-process (with the pin exported). Rust: clippy 0 warnings, fmt clean, all
   crate tests green after the changes.
-- **Fuzz results so far**: the first 500-case batch surfaced all of the above
-  (24 divergences at first run → root-caused into 7 fix classes → 0 divergent,
-  4 within-envelope, 496/500 byte-identical on re-run). The full corpus+fuzz
-  gate run (10k cases, seed 20260924) is in flight as this entry is written —
-  corpus legs already green in every run of the day (51 exact + 2 known-ulp
-  live; rs-vs-golden 51+2; py-vs-golden 53 exact).
+- **Fuzz results**: first 500-case batch → 24 divergences, root-caused into 7
+  fix classes → 0 divergent / 4 within-envelope / 496 byte-identical on
+  re-run. Tail scan of cases 500–2500 → 5 divergences, 2 further fix classes
+  (above) → 0 divergent; all 25 known-failing cases re-verified SAME against
+  the fixed binary; pytest 42/42 and TS SDK 17/17 re-confirmed on it. The
+  full corpus+10k gate run (seed 20260924) relaunches on this tree; corpus
+  legs green in every run of the day (live 51 exact + 2 known-ulp;
+  rs-vs-golden 51+2; py-vs-golden 53 exact).
 - Machine note: two unrelated heavy GPU/CPU jobs ran concurrently with this
   stage; all Stage 3 gates are correctness-only and every timing number
   observed this stage (including CPU forward latency) is discarded as noise.

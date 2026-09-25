@@ -244,17 +244,14 @@ impl Parser {
         loop {
             self.skip_ws();
             if self.peek() != Some('"') {
-                if self.peek().is_none() {
-                    return Err(self.err("Expecting value"));
-                }
+                // CPython: EOF or a non-string at the key position both give
+                // the property-name error (even `{` alone).
                 return Err(self.err("Expecting property name enclosed in double quotes"));
             }
             let key = self.parse_string()?;
             self.skip_ws();
             if self.peek() != Some(':') {
-                if self.peek().is_none() {
-                    return Err(self.err("Expecting value"));
-                }
+                // CPython: EOF after a key is still the ':' delimiter error.
                 return Err(self.err("Expecting ':' delimiter"));
             }
             self.pos += 1;
@@ -320,6 +317,37 @@ mod tests {
         let err = scan(r#"{"state": "s", "questions": {}} extra"#).unwrap_err();
         assert_eq!(err.msg, "Extra data");
         assert_eq!(err.pos, 32);
+
+        // CPython delimiter/property-name pins (fuzz-found, verified against
+        // the 3.12 interpreter).
+        let cases: &[(&str, &str, usize)] = &[
+            ("{", "Expecting property name enclosed in double quotes", 1),
+            (r#"{"a""#, "Expecting ':' delimiter", 4),
+            (r#"{"a": 1"#, "Expecting ',' delimiter", 7),
+            ("[1", "Expecting ',' delimiter", 2),
+            (r#"{"a": 1, "b""#, "Expecting ':' delimiter", 12),
+            ("{1: 2}", "Expecting property name enclosed in double quotes", 1),
+            (r#"{"a": 1,}"#, "Expecting property name enclosed in double quotes", 8),
+            ("[1,]", "Expecting value", 3),
+            (r#"{"a" 1}"#, "Expecting ':' delimiter", 5),
+            ("[1 2]", "Expecting ',' delimiter", 3),
+            // Unterminated strings error at the OPENING quote position.
+            (
+                r#"{"model": "von-latest", "state"#,
+                "Unterminated string starting at",
+                24,
+            ),
+            (
+                r#"{"model": "von-latest", "state""#,
+                "Expecting ':' delimiter",
+                31,
+            ),
+        ];
+        for &(text, msg, pos) in cases {
+            let err = scan(text).unwrap_err();
+            assert_eq!(err.msg, msg, "msg for {text:?}");
+            assert_eq!(err.pos, pos, "pos for {text:?}");
+        }
 
         assert!(scan(r#"{"a": 1}"#).is_ok());
     }

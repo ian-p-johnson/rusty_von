@@ -27,13 +27,14 @@ pub fn json_invalid_body(err: &JsonScanError) -> String {
     .to_string()
 }
 
-/// FastAPI only hands the request body to `request.json()` when the
-/// Content-Type is absent (Starlette default), `application/json`, or an
-/// `application/*+json` subtype; everything else reaches the pydantic model
-/// as the raw body bytes, producing a `model_attributes_type` error.
+/// FastAPI (strict_content_type=True by default) only hands the request body
+/// to `request.json()` when the Content-Type header is PRESENT with maintype
+/// `application` and subtype `json` or `*+json`; an ABSENT header also takes
+/// the raw path (fuzz_01402, verified against fastapi/routing.py), reaching
+/// pydantic as raw bytes and producing a `model_attributes_type` error.
 pub fn content_type_is_json(content_type: Option<&str>) -> bool {
     let Some(ct) = content_type else {
-        return true; // absent header -> request.json()
+        return false; // absent header -> raw bytes to pydantic (strict default)
     };
     let bare = ct.split(';').next().unwrap_or("").trim();
     let (maintype, subtype) = match bare.split_once('/') {
